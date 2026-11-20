@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% from "_macros.html" import pill %}
+{% block title %}Collect workers{% endblock %}
+{% block head %}{% if busy %}<meta http-equiv="refresh" content="3">{% endif %}{% endblock %}
+{% block content %}
+<p class="crumb"><a href="/workers">← Workers</a></p>
+<header class="page-head">
+  <div>
+    <span class="eyebrow eyebrow-worker">Workers</span>
+    <h1>Collect workers</h1>
+    <p class="lede">Pull trade businesses and their business phone numbers from official, public sources. It runs in the background, one source at a time, so you can keep working.</p>
+  </div>
+</header>
+
+{% if busy %}
+  <div class="progress-banner">
+    <span class="spinner" aria-hidden="true"></span>
+    <div>
+      <div class="strong">Collecting workers…</div>
+      <div class="small">{% if new_since %}{{ new_since|num }} new workers so far. {% endif %}This page updates by itself. Large sources can take a few minutes.</div>
+    </div>
+  </div>
+{% elif started and new_since %}
+  <div class="notice notice-ok">Finished. {{ new_since|num }} new workers added. <a href="/workers">See the workers →</a></div>
+{% elif started %}
+  <div class="notice notice-info">Finished. Results for each source are below.</div>
+{% endif %}
+
+<form method="post" action="/collect">
+  <div class="source-cards">
+    {% for r in rows %}
+      <label class="source-card state-{{ r.state }}">
+        <input type="checkbox" name="source" value="{{ r.id }}" {{ 'checked' if r.state not in ('running', 'waiting') }} {{ 'disabled' if busy }}>
+        <div class="source-body">
+          <div class="source-top">
+            <h2>{{ r.title }}</h2>
+            {% if r.state == 'running' %}{{ pill('info', 'Collecting…') }}
+            {% elif r.state == 'waiting' %}{{ pill('idle', 'Waiting its turn') }}
+            {% elif r.state == 'ok' %}{{ pill('ok', 'Done') }}
+            {% elif r.state == 'failed' %}{{ pill('bad', "Didn't finish") }}
+            {% else %}{{ pill('idle', 'Not collected yet') }}{% endif %}
+          </div>
+          <p class="muted small">{{ r.blurb }}</p>
+          <div class="person-line">{% for t in r.trades %}<span class="chip chip-worker">{{ t|trade }}</span>{% endfor %}</div>
+
+          {% if r.state == 'ok' and r.last %}
+            <div class="source-result">
+              <span><b>{{ r.created|num }}</b> new</span>
+              <span><b>{{ r.updated|num }}</b> updated</span>
+              <span><b>{{ r.fetched|num }}</b> records checked</span>
+              <span class="muted">{{ r.last.finished_at|ago if r.last.finished_at else r.last.started_at|ago }}</span>
+            </div>
+          {% elif r.state == 'failed' %}
+            <div class="source-error">{{ r.error }}<span class="muted"> · {{ r.last.started_at|ago }}</span>
+              {% if r.raw_error and r.raw_error != r.error %}<details class="inline-details small"><summary>Technical details</summary><pre>{{ r.raw_error }}</pre></details>{% endif %}
+            </div>
+          {% elif r.state == 'running' and r.last and r.last.status == 'running' %}
+            <div class="source-result"><span class="muted">Started {{ r.last.started_at|ago }}</span></div>
+          {% endif %}
+        </div>
+      </label>
+    {% endfor %}
+  </div>
+
+  <div class="collect-actions">
+    {% if busy %}
+      <button class="btn btn-worker btn-lg" type="submit" disabled>Collecting…</button>
+    {% else %}
+      <button class="btn btn-worker btn-lg" type="submit">{{ 'Collect again' if total else 'Start collecting' }}</button>
+      <span class="muted small">Collecting again only adds new workers and updates changed details. Nothing is duplicated.</span>
+    {% endif %}
+  </div>
+</form>
+
+<section class="panel" style="margin-top:22px">
+  <h2 style="margin-bottom:10px">How collection works</h2>
+  <ul class="plain-list small muted">
+    <li>Only business listings and business phone numbers. Never private homeowners.</li>
+    <li>Each website is asked politely: its robots.txt rules are followed and requests go at most once a second. If a site refuses, collection stops for that site and says so here.</li>
+    <li>Every worker keeps a link to the record it came from (open a worker → “Where this came from”).</li>
+    <li>Run history and technical details are on <a href="/sources">Data sources</a>.</li>
+  </ul>
+</section>
+{% endblock %}

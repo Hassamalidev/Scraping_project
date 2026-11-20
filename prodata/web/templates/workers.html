@@ -9,6 +9,7 @@
     <p class="lede">People who want work are listed first. Tap Call, then record how it went on their page.</p>
   </div>
   <div class="actions">
+    <a class="btn btn-secondary" href="/collect">{{ 'Collecting…' if running else 'Collect workers' }}</a>
     <a class="btn btn-secondary" href="/workers.csv?{{ qs }}">Download list</a>
     <a class="btn btn-worker" href="/workers/new">Add a worker</a>
   </div>
@@ -52,13 +53,47 @@
   </nav>
   {% endif %}
 {% elif counts.total == 0 %}
-  <div class="people"><div class="empty-state">
+  <div class="people"><div class="empty-state empty-big">
     <h3>No workers yet</h3>
-    <p>Collect them from public business data. In a terminal in the project folder, run:</p>
-    <p><code>uv run prodata collect --all</code></p>
-    <p>Or send workers your sign-up link: <a href="/join" target="_blank" rel="noopener">{{ base_url }}/join</a></p>
-    <div class="actions"><a class="btn btn-worker" href="/workers/new">Add a worker yourself</a></div>
+    <p>Get your first list of plumbers, carpenters, handymen, electricians and more in three ways:</p>
+    <div class="start-grid">
+      <div class="start-card">
+        <div class="start-num">1</div>
+        <h4>Collect from public data</h4>
+        <p>Licensed plumbers, HVAC and electricians from the state, plus carpenters, handymen, flooring, painters and roofers from OpenStreetMap.</p>
+        {% if running %}
+          <a class="btn btn-worker" href="/collect">Collecting… see progress</a>
+        {% else %}
+          <form method="post" action="/collect"><button class="btn btn-worker" type="submit">Collect workers now</button></form>
+        {% endif %}
+        <a class="small" href="/collect">Choose sources</a>
+      </div>
+      <div class="start-card">
+        <div class="start-num">2</div>
+        <h4>Let workers sign up</h4>
+        <p>Send this link to workers. They choose their trades and leave a number you're allowed to call.</p>
+        <div class="copy-row">
+          <input readonly value="{{ base_url }}/join" id="join-link" onclick="this.select()" aria-label="Sign-up link">
+          <button class="btn btn-secondary btn-small" type="button" data-copy="join-link">Copy</button>
+        </div>
+      </div>
+      <div class="start-card">
+        <div class="start-num">3</div>
+        <h4>Add one yourself</h4>
+        <p>A worker called you, or you already know one? Write their details down.</p>
+        <a class="btn btn-secondary" href="/workers/new">Add a worker</a>
+      </div>
+    </div>
   </div></div>
+  <script>
+  document.querySelectorAll('[data-copy]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var i = document.getElementById(b.dataset.copy); i.select();
+      try { navigator.clipboard.writeText(i.value); } catch (e) { document.execCommand('copy'); }
+      b.textContent = 'Copied';
+    });
+  });
+  </script>
 {% else %}
   <div class="people"><div class="empty-state">
     <h3>Nobody matches</h3>

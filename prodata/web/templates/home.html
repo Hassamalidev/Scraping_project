@@ -23,6 +23,7 @@
     </div>
     <div class="actions">
       <a class="btn btn-worker" href="/workers">Browse all workers</a>
+      <a class="btn btn-secondary" href="/collect">Collect workers</a>
       <a class="btn btn-secondary" href="/workers/new">Add a worker</a>
     </div>
     <div class="share">
@@ -85,7 +86,8 @@
     <section class="panel">
       <h2 style="margin-bottom:10px">Getting set up</h2>
       <ol class="setup">
-        <li class="{{ 'done' if workers.total }}"><div><b>Collect workers</b><br><span class="muted small">In a terminal in the project folder run <code>uv run prodata collect --all</code>. It pulls licensed plumbers, HVAC and electricians from the state, plus carpenters, handymen and others from OpenStreetMap.</span></div></li>
+        <li class="{{ 'done' if workers.total }}"><div><b>Collect workers</b><br><span class="muted small">Licensed plumbers, HVAC and electricians from the state, plus carpenters, handymen and others from OpenStreetMap.</span>
+          <div style="margin-top:8px">{% if running %}<a class="btn btn-secondary btn-small" href="/collect">Collecting… see progress</a>{% else %}<form method="post" action="/collect"><button class="btn btn-worker btn-small" type="submit">{{ 'Collect again' if workers.total else 'Collect workers now' }}</button></form>{% endif %}</div></div></li>
         <li class="{{ 'done' if workers.interested }}"><div><b>Get workers to sign up</b><br><span class="muted small">Send the <a href="/join" target="_blank" rel="noopener">join link</a> to workers you call.</span></div></li>
         <li class="{{ 'done' if clients.total }}"><div><b>Get client requests</b><br><span class="muted small">Share the <a href="/request" target="_blank" rel="noopener">request link</a> in ads and posts.</span></div></li>
         <li class="{{ 'done' if dnc_loaded }}"><div><b>Load the Do-Not-Call list</b><br><span class="muted small">Needed before you cold-call workers you found. People who signed up or asked for a call can be called right away. <a href="/compliance">Import it</a></span></div></li>

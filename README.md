@@ -49,8 +49,8 @@ uv sync
 uv run prodata db upgrade         # create tables
 uv run prodata sources list
 
-uv run prodata collect --all      # download licence data for the market in config/market.yaml
-uv run prodata web                # open http://127.0.0.1:8000
+uv run prodata web                # open http://127.0.0.1:8000, then Find workers → Collect workers
+# (or from the terminal: uv run prodata collect --all)
 ```
 
 Before calling anyone, import the National DNC Registry area-code files your company downloads
@@ -62,6 +62,9 @@ People who signed up or asked for a call are callable straight away.
 
 - **Home**: the two sides. Worker and client counts per trade, the links to share, money this
   month, and the clients waiting for a call.
+- **Collect workers** (`/collect`): tick the sources and press *Start collecting*. It runs in the
+  background, one source at a time, the page updates itself, and each source shows how many workers
+  it added or why it stopped, in plain words.
 - **Find workers**: pick a trade (Plumber, Carpenter, Handyman…), search by name or phone, filter
   *Want work* / *Not called yet* / *OK to call*. People who want work are listed first. A worker's
   page has the call log ("Interested", "Not interested", "Do not contact", notes), licence details,

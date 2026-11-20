@@ -5,12 +5,12 @@
 <header class="page-head">
   <div>
     <h1>Data sources</h1>
-    <p class="lede">Where workers come from: state licence files and OpenStreetMap, collected politely (robots.txt honoured, one request per second, cached). To collect, run <code class="mono">uv run prodata collect --all</code> in a terminal.</p>
+    <p class="lede">Where workers come from: state licence files and OpenStreetMap, collected politely (robots.txt honoured, one request per second, cached). To collect, use <a href="/collect">Collect workers</a>.</p>
   </div>
 </header>
 
 {% if running %}
-<div class="notice notice-info">Collecting from {{ running|join(', ') }}… <a href="/sources">Refresh</a> to see progress.</div>
+<div class="notice notice-info">Collecting from {{ running|join(', ') }}… <a href="/collect">See progress</a></div>
 {% endif %}
 
 <section class="panel">

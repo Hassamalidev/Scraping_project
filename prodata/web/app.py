@@ -16,6 +16,7 @@ from __future__ import annotations
 import base64
 import binascii
 import math
+import re
 import secrets
 import shutil
 import tempfile
@@ -177,7 +178,9 @@ def _ago(value):
     hours = delta.seconds // 3600
     if hours:
         return f"{hours}h ago"
-    return f"{max(1, delta.seconds // 60)}m ago"
+    if delta.seconds < 60:
+        return "just now"
+    return f"{delta.seconds // 60}m ago"
 
 
 def _money(value):
@@ -864,7 +867,43 @@ def source_doc(request: Request, source_id: str):
     return render(request, "doc.html", nav="sources", title=CONNECTORS[source_id].name, text=path.read_text(encoding="utf-8"))
 
 
-def _run_source_in_background(source_id: str) -> None:
+# ---- collecting workers -------------------------------------------------------------
+
+# Plain-language description of each source for the Collect page.
+SOURCE_BLURBS = {
+    "tx_tsbpe_plumbing": ("Licensed plumbers", "Texas State Board of Plumbing Examiners: every Responsible Master Plumber, with the business phone on their licence."),
+    "tx_tdlr_licenses": ("Licensed HVAC & electricians", "Texas Department of Licensing and Regulation: air-conditioning and electrical contractors in the DFW counties."),
+    "osm_overpass": ("Carpenters, handymen, flooring, painters, roofers", "OpenStreetMap: local trade businesses on the open map, including trades Texas doesn't license."),
+}
+_queue: list[str] = []  # sources waiting to be collected, in order
+_batch_started_at: datetime | None = None
+
+
+def _friendly_error(message: str | None) -> str:
+    """Turn a stored run error into one sentence a non-developer can act on."""
+    m = message or ""
+    code_match = re.search(r"HTTP (\d{3})", m)
+    code = int(code_match.group(1)) if code_match else None
+    if "Could not reach" in m or "ConnectError" in m or "ConnectTimeout" in m:
+        return "Couldn't connect to the website. Check the internet connection and try again."
+    if "robots.txt" in m:
+        return "The website doesn't allow automated collection, so it was skipped."
+    if code in (401, 403, 406, 451) or "FetchBlocked" in m or "access refused" in m:
+        return (
+            f"The website refused requests from this internet connection{f' (HTTP {code})' if code else ''}. "
+            "Collection stopped. Blocks are never worked around. Try again later, or from another network."
+        )
+    if "Could not find" in m:
+        return "The website's layout changed; the download link wasn't found. The connector needs updating."
+    if code == 429 or (code and code >= 500) or "RetryableStatus" in m or "Overpass error" in m:
+        return "The website is busy right now. Try again in a few minutes."
+    if code:
+        return f"The website answered with an error (HTTP {code})."
+    text = re.sub(r"<[^>]+>", " ", m)
+    return re.sub(r"\s+", " ", text).strip()[:220] or "Something went wrong."
+
+
+def _collect_in_background(source_ids: list[str]) -> None:
     import asyncio
 
     from prodata.http_client import build_client
@@ -872,25 +911,115 @@ def _run_source_in_background(source_id: str) -> None:
 
     cfg = load_market_config()
     try:
+        for sid in source_ids:
+            with _running_lock:
+                if sid in _queue:
+                    _queue.remove(sid)
+            try:
 
-        async def go():
-            async with build_client(cfg) as client:
-                await run_collect(make_sessionmaker(), source_id, client, cfg, load_trade_map())
+                async def go():
+                    async with build_client(cfg) as client:
+                        await run_collect(make_sessionmaker(), sid, client, cfg, load_trade_map())
 
-        asyncio.run(go())
+                asyncio.run(go())
+            except Exception as exc:  # recorded so the page can say what happened
+                with session_scope() as s:
+                    s.add(PipelineRun(stage="collect", source_id=sid, status="failed", finished_at=utcnow(),
+                                      errors=[{"error": f"{type(exc).__name__}: {exc}"}]))
+            finally:
+                with _running_lock:
+                    _running.discard(sid)
         with session_scope() as s:
             refresh_flags(s, cfg.compliance.dnc_max_age_days)
     finally:
         with _running_lock:
-            _running.discard(source_id)
+            for sid in source_ids:
+                _running.discard(sid)
+                if sid in _queue:
+                    _queue.remove(sid)
+
+
+def _spawn(target, *args) -> None:
+    threading.Thread(target=target, args=args, daemon=True).start()
+
+
+def start_collect(source_ids: list[str]) -> list[str]:
+    """Queue sources and start one background worker. Returns the sources actually started."""
+    global _batch_started_at
+    with _running_lock:
+        todo = [sid for sid in source_ids if sid in CONNECTORS and sid not in _running]
+        if not todo:
+            return []
+        if not _running:
+            _batch_started_at = utcnow()
+        _running.update(todo)
+        _queue.extend(todo)
+    _spawn(_collect_in_background, todo)
+    return todo
+
+
+def _source_states(session) -> list[dict]:
+    with _running_lock:
+        running, queue = set(_running), list(_queue)
+    rows = []
+    for sid, cls in CONNECTORS.items():
+        last = session.scalar(
+            select(PipelineRun).where(PipelineRun.source_id == sid).order_by(PipelineRun.started_at.desc()).limit(1)
+        )
+        counts = (last.counts or {}) if last else {}
+        if sid in queue:
+            state = "waiting"
+        elif sid in running:
+            state = "running"
+        elif last is None:
+            state = "never"
+        else:
+            state = last.status or "never"
+        title, blurb = SOURCE_BLURBS.get(sid, (cls.name, ""))
+        rows.append(
+            {
+                "id": sid,
+                "title": title,
+                "blurb": blurb,
+                "official": cls.name,
+                "trades": cls.trades,
+                "state": state,
+                "last": last,
+                "created": counts.get("businesses_created", 0),
+                "updated": counts.get("businesses_updated", 0),
+                "fetched": counts.get("fetched", 0),
+                "error": _friendly_error((last.errors or [{}])[0].get("error")) if last and last.status == "failed" else None,
+                "raw_error": re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", (last.errors or [{}])[0].get("error") or ""))[:400]
+                if last and last.status == "failed" else None,
+            }
+        )
+    return rows
+
+
+@app.get("/collect", response_class=HTMLResponse)
+def collect_page(request: Request):
+    with session_scope() as s:
+        rows = _source_states(s)
+        total = s.scalar(select(func.count(Business.id))) or 0
+        new_since = 0
+        if _batch_started_at:
+            new_since = s.scalar(select(func.count(Business.id)).where(Business.created_at >= _batch_started_at)) or 0
+    busy = any(r["state"] in ("running", "waiting") for r in rows)
+    return render(request, "collect.html", nav="workers", rows=rows, busy=busy, total=total, new_since=new_since,
+                  started=request.query_params.get("started"))
+
+
+@app.post("/collect")
+async def collect_start(request: Request):
+    form = await request.form()
+    chosen = form.getlist("source") or list(CONNECTORS)
+    start_collect(chosen)
+    return RedirectResponse("/collect?started=1", status_code=303)
 
 
 @app.post("/sources/{source_id}/run")
 def run_source(source_id: str):
     if source_id not in CONNECTORS:
         raise HTTPException(404)
-    with _running_lock:
-        if source_id not in _running:
-            _running.add(source_id)
-            threading.Thread(target=_run_source_in_background, args=(source_id,), daemon=True).start()
-    return RedirectResponse("/sources", status_code=303)
+    start_collect([source_id])
+    return RedirectResponse("/collect?started=1", status_code=303)
