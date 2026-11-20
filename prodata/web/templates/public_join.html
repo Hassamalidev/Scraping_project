@@ -1,0 +1,29 @@
+{% extends "public_base.html" %}
+{% block title %}Get more jobs · {{ brand }}{% endblock %}
+{% block barlink %}<a class="small" href="/request">Need a pro? Ask here</a>{% endblock %}
+{% block content %}
+<div class="public-hero">
+  <h1>Get more jobs in {{ market.metros[0].name }}</h1>
+  <p>Plumbers, carpenters, handymen, painters, roofers, flooring and more: sign up and we'll call you when a customer near you needs your trade. It costs nothing to join.</p>
+</div>
+
+<div class="steps">
+  <div><b>1 · Sign up</b>Takes one minute</div>
+  <div><b>2 · We call you</b>With a job near you</div>
+  <div><b>3 · You decide</b>Take it or pass</div>
+</div>
+
+{% if error %}<div class="notice notice-bad">{{ error }}</div>{% endif %}
+
+<section class="panel">
+  <form method="post" action="/join" class="stack">
+    {% include "_worker_fields.html" %}
+    <div class="trap" aria-hidden="true"><label>Website <input name="website" tabindex="-1" autocomplete="off"></label></div>
+    <label class="check consent">
+      <input type="checkbox" name="consent" value="1" {{ 'checked' if form.get('consent') }}>
+      <span>{{ consent }}</span>
+    </label>
+    <div class="form-actions"><button class="btn btn-worker" type="submit" style="padding:13px 22px;font-size:1rem">Sign me up</button></div>
+  </form>
+</section>
+{% endblock %}

@@ -24,6 +24,10 @@ class Settings(BaseSettings):
     prodata_cache_dir: Path = ROOT / ".cache" / "http"
     socrata_app_token: str = ""
     exports_dir: Path = ROOT / "exports"
+    # Name shown on the public "Request a pro" and "Join" pages.
+    brand_name: str = "Tradebook"
+    # When set, every page except the public forms asks for this password (user "admin").
+    admin_password: str = ""
 
 
 class Metro(BaseModel):

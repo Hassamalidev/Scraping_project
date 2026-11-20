@@ -1,0 +1,29 @@
+{% extends "public_base.html" %}
+{% block title %}Get a local pro · {{ brand }}{% endblock %}
+{% block barlink %}<a class="small" href="/join">Are you a pro? Join</a>{% endblock %}
+{% block content %}
+<div class="public-hero">
+  <h1>Need a plumber, carpenter or handyman?</h1>
+  <p>Tell us about the job. We'll call you back, find a local pro, and agree the price with you before any work starts.</p>
+</div>
+
+<div class="steps">
+  <div><b>1 · Tell us</b>What you need and where</div>
+  <div><b>2 · We call you</b>To talk it through</div>
+  <div><b>3 · Job done</b>By a local pro</div>
+</div>
+
+{% if error %}<div class="notice notice-bad">{{ error }}</div>{% endif %}
+
+<section class="panel">
+  <form method="post" action="/request" class="stack">
+    {% include "_client_fields.html" %}
+    <div class="trap" aria-hidden="true"><label>Website <input name="website" tabindex="-1" autocomplete="off"></label></div>
+    <label class="check consent">
+      <input type="checkbox" name="consent" value="1" {{ 'checked' if form.get('consent') }}>
+      <span>{{ consent }}</span>
+    </label>
+    <div class="form-actions"><button class="btn btn-client" type="submit" style="padding:13px 22px;font-size:1rem">Send my request</button></div>
+  </form>
+</section>
+{% endblock %}

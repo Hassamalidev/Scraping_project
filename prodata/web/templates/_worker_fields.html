@@ -1,0 +1,18 @@
+{% set picked = form.getlist('trades') if form.getlist is defined else [] %}
+<div class="form-grid">
+  <label class="field"><span>Name</span><input name="name" required autocomplete="name" value="{{ form.get('name', '') }}"></label>
+  <label class="field"><span>Business name <span class="opt">(optional)</span></span><input name="business_name" autocomplete="organization" value="{{ form.get('business_name', '') }}"></label>
+  <label class="field"><span>Mobile phone</span><input name="phone" required type="tel" autocomplete="tel" placeholder="(214) 555-0123" value="{{ form.get('phone', '') }}"></label>
+  <label class="field"><span>Email <span class="opt">(optional)</span></span><input name="email" type="email" autocomplete="email" value="{{ form.get('email', '') }}"></label>
+  <div class="field full">
+    <span>Kind of work</span>
+    <div class="checks">
+      {% for key, labels in TRADES.items() %}
+        <label class="check"><input type="checkbox" name="trades" value="{{ key }}" {{ 'checked' if key in picked }}> {{ labels[0] }}</label>
+      {% endfor %}
+    </div>
+  </div>
+  <label class="field"><span>City</span><input name="city" autocomplete="address-level2" value="{{ form.get('city', '') }}"></label>
+  <label class="field"><span>ZIP <span class="opt">(optional)</span></span><input name="zip" inputmode="numeric" autocomplete="postal-code" value="{{ form.get('zip', '') }}"></label>
+  <label class="field full"><span>About the work <span class="opt">(optional)</span></span><textarea name="about" rows="3" placeholder="Years of experience, areas covered, licences, tools…">{{ form.get('about', '') }}</textarea></label>
+</div>

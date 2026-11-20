@@ -1,0 +1,14 @@
+{% extends "public_base.html" %}
+{% block title %}Thank you · {{ brand }}{% endblock %}
+{% block content %}
+<section class="panel" style="text-align:center;padding:44px 24px">
+  {% if who == 'worker' %}
+    <h1>You're signed up</h1>
+    <p class="muted" style="margin:10px auto 0;max-width:46ch">Thanks! We'll call you when a customer near you needs your trade.</p>
+  {% else %}
+    <h1>Request received</h1>
+    <p class="muted" style="margin:10px auto 0;max-width:46ch">Thanks! We'll call you soon to talk about the job and line up a local pro.</p>
+    <p style="margin-top:18px"><a href="/request">Send another request</a></p>
+  {% endif %}
+</section>
+{% endblock %}

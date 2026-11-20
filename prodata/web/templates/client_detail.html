@@ -1,0 +1,192 @@
+{% extends "base.html" %}
+{% from "_macros.html" import call_block, client_status, payment_status, worker_status, pill %}
+{% block title %}{{ job.name }}{% endblock %}
+{% block content %}
+<p class="crumb"><a href="{{ back }}">← Clients</a></p>
+
+{% set saved = request.query_params.get('saved') %}
+{% if error %}<div class="notice notice-bad">{{ error }}</div>
+{% elif saved == 'added' %}<div class="notice notice-ok">Client added. Next: find them a worker below.</div>
+{% elif saved == 'worker' %}<div class="notice notice-ok">Worker updated.</div>
+{% elif saved == 'deal' %}<div class="notice notice-ok">Deal saved.</div>
+{% elif saved == 'status' %}<div class="notice notice-ok">Saved.</div>{% endif %}
+
+<header class="page-head">
+  <div class="profile">
+    <div class="avatar avatar-client avatar-lg">{{ job.name|initials }}</div>
+    <div>
+      <h1>{{ job.name }}</h1>
+      <div class="person-line">
+        <span class="chip chip-client">Needs {{ job.trade|need|lower }}</span>
+        {% if job.city or job.zip %}<span>{{ job.city or '' }} {{ job.zip or '' }}</span>{% endif %}
+        <span class="dot-sep">Asked {{ job.created_at|ago }}</span>
+      </div>
+    </div>
+  </div>
+  <div>{{ client_status(job.status) }}</div>
+</header>
+
+<div class="grid-side">
+  <div>
+    <section class="callcard">
+      <div class="row">
+        <div>
+          <div class="label">Client's phone</div>
+          <div style="display:flex;gap:14px;align-items:center;margin-top:4px;flex-wrap:wrap">
+            {% if job.status == 'do_not_contact' %}<span class="phone-none">Asked not to be contacted</span>{% else %}{{ call_block(job.phone_e164, decision, 'xl') }}{% endif %}
+          </div>
+        </div>
+        {% if job.email %}<div><div class="label">Email</div><a href="mailto:{{ job.email }}">{{ job.email }}</a></div>{% endif %}
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2 style="margin-bottom:12px">The job</h2>
+      {% if job.details %}<div class="quote">{{ job.details }}</div>{% else %}<p class="muted">No description given. Ask on the call.</p>{% endif %}
+      <dl class="facts" style="margin-top:16px">
+        <dt>Kind of work</dt><dd>{{ job.trade|need }}</dd>
+        <dt>When</dt><dd>{{ TIMINGS.get(job.timing, '—') if job.timing else '—' }}</dd>
+        <dt>Budget</dt><dd>{{ job.budget or '—' }}</dd>
+        <dt>Address</dt><dd>{{ job.address or '' }}{% if job.address %}<br>{% endif %}{{ job.city or '' }} {{ job.zip or '' }}{% if not (job.address or job.city or job.zip) %}—{% endif %}</dd>
+        <dt>Came from</dt><dd>{{ 'Your request form' if job.origin == 'request_form' else 'Contacted you directly' }} · {{ job.created_at|dt }}</dd>
+        {% if others %}<dt>Asked before</dt><dd>{% for o in others %}<a href="/clients/{{ o.id }}">{{ o.trade|need }} · {{ o.created_at|day }}</a>{{ ', ' if not loop.last }}{% endfor %}</dd>{% endif %}
+      </dl>
+    </section>
+
+    <section class="panel" id="worker">
+      {% if worker_row %}
+        {% set w = worker_row.biz %}
+        <div class="panel-head"><h2>Worker for this job</h2></div>
+        <div class="people match-list">
+          <article class="person">
+            <div class="avatar avatar-worker">{{ (w.contact_name or w.legal_name)|initials }}</div>
+            <div style="min-width:0">
+              <a class="person-name" href="/workers/{{ w.id }}">{{ w.dba_name or w.legal_name }}</a>
+              <div class="person-line">{% for t in worker_row.trades %}<span class="chip chip-worker">{{ t|trade }}</span>{% endfor %}{% if w.city %}<span>{{ w.city }}</span>{% endif %}</div>
+            </div>
+            <div class="person-call">{{ call_block(worker_row.phone.e164 if worker_row.phone else None, worker_row.decision) }}</div>
+          </article>
+        </div>
+        <form method="post" action="/clients/{{ job.id }}/assign" style="margin-top:10px">
+          <input type="hidden" name="worker_id" value="">
+          <button class="btn-link" type="submit">Remove and pick another worker</button>
+        </form>
+      {% else %}
+        <div class="panel-head">
+          <h2>Find a worker for this job</h2>
+          <a href="/workers?trade={{ job.trade }}&amp;show=interested">Browse all {{ job.trade|plural|lower }} →</a>
+        </div>
+        <p class="muted small" style="margin:-6px 0 12px">Workers who want jobs come first, then ones in {{ job.city or 'the same area' }}. Call one, agree the price, then press Choose.</p>
+        {% if suggestions %}
+          <div class="people match-list">
+            {% for r in suggestions %}
+              {% set w = r.biz %}
+              <article class="person">
+                <div class="avatar avatar-worker">{{ (w.contact_name or w.legal_name)|initials }}</div>
+                <div style="min-width:0">
+                  <a class="person-name" href="/workers/{{ w.id }}">{{ w.dba_name or w.legal_name }}</a>
+                  <div class="person-line">
+                    {% if w.city %}<span>{{ w.city }}</span>{% endif %}
+                    {{ worker_status(r.status, r.interested, r.signed_up) }}
+                  </div>
+                </div>
+                <div class="person-call">
+                  {{ call_block(r.phone.e164 if r.phone else None, r.decision) }}
+                  <form method="post" action="/clients/{{ job.id }}/assign">
+                    <input type="hidden" name="worker_id" value="{{ w.id }}">
+                    <button class="btn btn-secondary" type="submit">Choose</button>
+                  </form>
+                </div>
+              </article>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="empty-state" style="padding:24px">
+            <p>No {{ job.trade|plural|lower }} yet. Collect workers or <a href="/workers/new">add one</a>.</p>
+          </div>
+        {% endif %}
+      {% endif %}
+    </section>
+  </div>
+
+  <aside>
+    <section class="panel">
+      <h2 style="margin-bottom:4px">Call result</h2>
+      {% if job.last_called_at %}<p class="muted small">Last call {{ job.last_called_at|dt }}</p>{% endif %}
+      <form method="post" action="/clients/{{ job.id }}/status" class="stack" style="margin-top:12px">
+        <div class="choice-grid" role="radiogroup" aria-label="Status">
+          {% for s in statuses %}
+            <label class="choice{{ ' choice-ok' if s in ('matched', 'done') }}{{ ' choice-bad' if s == 'do_not_contact' }}">
+              <input type="radio" name="status" value="{{ s }}" {{ 'checked' if job.status == s }}>
+              <span>{{ CLIENT_STATUS_LABELS[s] }}</span>
+            </label>
+          {% endfor %}
+        </div>
+        <label class="field">
+          <span>Notes</span>
+          <textarea name="notes" rows="4" placeholder="What they said, best time to call, access to the property…">{{ job.notes or '' }}</textarea>
+        </label>
+        <label class="check"><input type="checkbox" name="called_now" value="1" checked> I just called them</label>
+        <div class="form-actions"><button class="btn" type="submit">Save</button></div>
+      </form>
+    </section>
+
+    <section class="panel" id="deal">
+      <div class="panel-head"><h2>The deal</h2>{{ payment_status(job.payment_status) }}</div>
+      <p class="muted small" style="margin:-8px 0 12px">Write down what you agreed. The money itself is paid outside this app.</p>
+      <form method="post" action="/clients/{{ job.id }}/deal" class="stack" id="deal-form">
+        <div class="deal-math">
+          <label class="field"><span>Client pays</span><input name="client_price" inputmode="decimal" placeholder="$0" value="{{ job.client_price if job.client_price is not none else '' }}"></label>
+          <label class="field"><span>Worker gets</span><input name="worker_price" inputmode="decimal" placeholder="$0" value="{{ job.worker_price if job.worker_price is not none else '' }}"></label>
+        </div>
+        <div class="cut"><span class="muted">Your cut</span><span class="value" id="cut">{{ job.my_cut|money }}</span></div>
+        <label class="field">
+          <span>How the client pays</span>
+          <select name="payment_method">
+            <option value="">Not decided</option>
+            {% for m in payment_methods %}<option value="{{ m }}" {{ 'selected' if job.payment_method == m }}>{{ PAYMENT_METHOD_LABELS[m] }}</option>{% endfor %}
+          </select>
+        </label>
+        <label class="field">
+          <span>Payment</span>
+          <select name="payment_status">
+            {% for p in payment_statuses %}<option value="{{ p }}" {{ 'selected' if job.payment_status == p }}>{{ PAYMENT_STATUS_LABELS[p] }}</option>{% endfor %}
+          </select>
+        </label>
+        {% if job.paid_at %}<p class="muted small">Marked paid {{ job.paid_at|dt }}</p>{% endif %}
+        <div class="form-actions"><button class="btn" type="submit">Save deal</button></div>
+      </form>
+    </section>
+
+    <section class="panel">
+      <details>
+        <summary class="strong" style="cursor:pointer">Permission to call</summary>
+        <dl class="facts small" style="margin-top:12px;grid-template-columns:90px 1fr">
+          <dt>Given</dt><dd>{{ job.consent_at|dt }}</dd>
+          <dt>How</dt><dd>{{ 'Request form' if job.origin == 'request_form' else 'Contacted you directly' }}</dd>
+          <dt>Wording</dt><dd>{{ job.consent_text }}</dd>
+          {% if job.consent_ip %}<dt>IP</dt><dd class="mono">{{ job.consent_ip }}</dd>{% endif %}
+          {% if job.consent_page_url %}<dt>Page</dt><dd class="mono">{{ job.consent_page_url }}</dd>{% endif %}
+        </dl>
+      </details>
+    </section>
+  </aside>
+</div>
+
+<script>
+(function () {
+  var form = document.getElementById('deal-form');
+  if (!form) return;
+  var out = document.getElementById('cut');
+  function num(v) { v = (v || '').replace(/[$,\s]/g, ''); return v === '' ? null : Number(v); }
+  function update() {
+    var c = num(form.client_price.value), w = num(form.worker_price.value);
+    if (c === null || w === null || isNaN(c) || isNaN(w)) { out.textContent = '—'; return; }
+    var cut = c - w;
+    out.textContent = (cut < 0 ? '-$' : '$') + Math.abs(cut).toLocaleString(undefined, {minimumFractionDigits: cut % 1 ? 2 : 0, maximumFractionDigits: 2});
+  }
+  form.client_price.addEventListener('input', update);
+  form.worker_price.addEventListener('input', update);
+})();
+</script>
+{% endblock %}

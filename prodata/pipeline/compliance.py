@@ -1,8 +1,9 @@
 """Compliance flags, suppression list and DNC import (spec 6.7).
 
 call_ok  = number valid AND not suppressed
-           AND (dnc_status == clear OR published as a business line with evidence)
-           AND the DNC data for that area code is ≤ 31 days old.
+           AND (the owner asked us to call — sign-up/request form or contacted us directly
+                OR (dnc_status == clear OR published as a business line with evidence)
+                   AND the DNC data for that area code is ≤ 31 days old).
 email_ok = not suppressed AND not a hard bounce AND (MX valid OR API says deliverable).
 sms_ok   = always False in Phase 1.
 
@@ -133,12 +134,15 @@ def call_decision(
     dnc_imported_at: datetime | None,
     now: datetime | None = None,
     max_age_days: int = 31,
+    consented: bool = False,
 ) -> Decision:
     now = now or datetime.now(timezone.utc)
     if not e164 or not normalize_phone(e164):
         return Decision(False, "invalid number")
     if suppressed:
         return Decision(False, "on suppression list")
+    if consented:
+        return Decision(True, "asked to be called")
     if dnc_imported_at is None:
         return Decision(False, "no DNC data for this area code")
     if now - dnc_imported_at > timedelta(days=max_age_days):
@@ -252,6 +256,7 @@ def refresh_flags(session: Session, max_age_days: int = 31) -> dict[str, int]:
             dnc_imported_at=imported_at,
             now=now,
             max_age_days=max_age_days,
+            consented=phone.consent_at is not None,
         )
         phone.call_ok = decision.ok
         counts["call_ok" if decision.ok else "call_blocked"] += 1
@@ -280,6 +285,7 @@ def phone_decision_for(phone: Phone, supp: SuppressionIndex, imports: dict[str, 
         business_evidence=phone.published_as_business_evidence,
         dnc_imported_at=imports.get(area) if area else None,
         max_age_days=max_age_days,
+        consented=phone.consent_at is not None,
     )
 
 

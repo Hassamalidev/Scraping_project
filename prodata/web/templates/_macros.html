@@ -1,18 +1,112 @@
-{% macro status(kind, text) -%}
-<span class="status status-{{ kind }}">{{ text }}</span>
+{% macro pill(kind, text, title='') -%}
+<span class="pill pill-{{ kind }}"{% if title %} title="{{ title }}"{% endif %}>{{ text }}</span>
 {%- endmacro %}
 
-{% macro call_status(decision) -%}
-{% if decision is none %}<span class="muted">—</span>
-{% elif decision.ok %}{{ status('ok', 'Can call') }}
-{% else %}<span class="status status-bad" title="{{ decision.reason }}">Blocked</span>{% endif %}
+{% macro status(kind, text) -%}{{ pill(kind, text) }}{%- endmacro %}
+
+{% macro phone_icon() -%}
+<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6.6 10.8a15.1 15.1 0 0 0 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1A17 17 0 0 1 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1l-2.3 2.2z"/></svg>
 {%- endmacro %}
 
-{% macro outreach_label(s) -%}
-{% set kinds = {'not_contacted': 'idle', 'contacted': 'info', 'replied': 'info', 'interested': 'ok', 'signed_up': 'ok', 'declined': 'idle', 'do_not_contact': 'bad'} %}
-{{ status(kinds.get(s, 'idle'), s.replace('_', ' ')|capitalize) }}
+{# Phone number + Call button. Number is always shown; the Call button only when the rules allow it. #}
+{% macro call_block(e164, decision, size='big') -%}
+{% if not e164 %}
+  <span class="phone-none">No phone number</span>
+{% else %}
+  <div class="phone-col">
+    <div class="phone-{{ size }}">{{ e164|phone }}</div>
+    {% if decision and decision.ok %}
+      <div class="phone-why">{{ decision.reason|capitalize }}</div>
+    {% elif decision %}
+      <div class="phone-why bad" title="{{ decision.reason }}">Don't call yet: {{ decision.reason }}</div>
+    {% endif %}
+  </div>
+  {% if decision and decision.ok %}
+    <a class="btn btn-call" href="{{ e164|tel }}">{{ phone_icon() }} Call</a>
+  {% else %}
+    <span class="btn btn-secondary" aria-disabled="true" title="{{ decision.reason if decision else '' }}" style="opacity:.55;cursor:not-allowed">{{ phone_icon() }} Call</span>
+  {% endif %}
+{% endif %}
+{%- endmacro %}
+
+{% macro worker_status(s, interested=False, signed_up=False) -%}
+{% if signed_up and s in ('not_contacted', 'interested') %}{{ pill('ok', 'Signed up, wants work') }}
+{% elif s == 'interested' %}{{ pill('ok', 'Interested') }}
+{% elif s == 'signed_up' %}{{ pill('ok', 'Working with us') }}
+{% elif s == 'contacted' %}{{ pill('idle', 'Called, no answer') }}
+{% elif s == 'replied' %}{{ pill('info', 'Talked, follow up') }}
+{% elif s == 'declined' %}{{ pill('idle', 'Not interested') }}
+{% elif s == 'do_not_contact' %}{{ pill('bad', 'Do not contact') }}
+{% else %}{{ pill('idle', 'Not called yet') }}{% endif %}
+{%- endmacro %}
+
+{% macro client_status(s) -%}
+{% set kinds = {'new': 'client', 'called': 'info', 'matched': 'ok', 'done': 'ok', 'lost': 'idle', 'do_not_contact': 'bad'} %}
+{{ pill(kinds.get(s, 'idle'), CLIENT_STATUS_LABELS.get(s, s)) }}
+{%- endmacro %}
+
+{% macro payment_status(s) -%}
+{% set kinds = {'unpaid': 'warn', 'deposit': 'info', 'paid': 'ok'} %}
+{{ pill(kinds.get(s, 'idle'), PAYMENT_STATUS_LABELS.get(s, s)) }}
 {%- endmacro %}
 
 {% macro run_status(s) -%}
-{% if s == 'ok' %}{{ status('ok', 'OK') }}{% elif s == 'failed' %}{{ status('bad', 'Failed') }}{% elif s == 'running' %}{{ status('info', 'Running') }}{% elif s %}{{ status('idle', s) }}{% else %}<span class="muted">—</span>{% endif %}
+{% if s == 'ok' %}{{ pill('ok', 'OK') }}{% elif s == 'failed' %}{{ pill('bad', 'Failed') }}{% elif s == 'running' %}{{ pill('info', 'Running') }}{% elif s %}{{ pill('idle', s) }}{% else %}<span class="muted">—</span>{% endif %}
+{%- endmacro %}
+
+{% macro worker_row(r) -%}
+{% set b = r.biz %}
+<article class="person{{ ' is-muted' if r.suppressed }}">
+  <div class="avatar avatar-worker">{{ (b.contact_name or b.legal_name)|initials }}</div>
+  <div style="min-width:0">
+    <a class="person-name" href="/workers/{{ b.id }}">{{ b.dba_name or b.legal_name }}</a>
+    <div class="person-line">
+      {% for t in r.trades %}<span class="chip chip-worker">{{ t|trade }}</span>{% endfor %}
+      {% if b.city %}<span>{{ b.city }}</span>{% endif %}
+      {% if r.licensed %}<span class="dot-sep">Licensed</span>{% endif %}
+      {% if b.contact_name and b.contact_name != b.legal_name %}<span class="dot-sep">Ask for {{ b.contact_name }}</span>{% endif %}
+    </div>
+    <div class="person-line">
+      {% if r.suppressed %}{{ pill('bad', 'Do not contact') }}{% else %}{{ worker_status(r.status, r.interested, r.signed_up) }}{% endif %}
+    </div>
+  </div>
+  <div class="person-call">
+    {% if r.suppressed %}<span class="phone-none">Hidden: asked not to be contacted</span>
+    {% else %}{{ call_block(r.phone.e164 if r.phone else None, r.decision) }}{% endif %}
+  </div>
+</article>
+{%- endmacro %}
+
+{% macro client_row(job, decision) -%}
+<article class="person{{ ' is-muted' if job.status in ('lost', 'do_not_contact') }}">
+  <div class="avatar avatar-client">{{ job.name|initials }}</div>
+  <div style="min-width:0">
+    <a class="person-name" href="/clients/{{ job.id }}">{{ job.name }}</a>
+    <div class="person-line">
+      <span class="chip chip-client">Needs {{ job.trade|need|lower }}</span>
+      {% if job.city or job.zip %}<span>{{ job.city or '' }}{% if job.zip %} {{ job.zip }}{% endif %}</span>{% endif %}
+      {% if job.timing %}<span class="dot-sep">{{ TIMINGS.get(job.timing, job.timing) }}</span>{% endif %}
+      <span class="dot-sep">{{ job.created_at|ago }}</span>
+    </div>
+    {% if job.details %}<div class="person-note">“{{ job.details }}”</div>{% endif %}
+    <div class="person-line">
+      {{ client_status(job.status) }}
+      {% if job.worker %}<span>Worker: <a href="/workers/{{ job.worker.id }}">{{ job.worker.dba_name or job.worker.legal_name }}</a></span>{% endif %}
+      {% if job.client_price is not none %}<span class="dot-sep">{{ job.client_price|money }}</span>{% endif %}
+    </div>
+  </div>
+  <div class="person-call">
+    {% if job.status == 'do_not_contact' %}<span class="phone-none">Asked not to be contacted</span>
+    {% else %}{{ call_block(job.phone_e164, decision) }}{% endif %}
+  </div>
+</article>
+{%- endmacro %}
+
+{% macro trade_tabs(path, current, counts, extra, side) -%}
+<nav class="tabs tabs-{{ side }}" aria-label="Trade">
+  <a class="tab{{ ' active' if not current }}" href="{{ path }}{% if extra %}?{{ extra }}{% endif %}">All</a>
+  {% for key, labels in TRADES.items() %}
+    <a class="tab{{ ' active' if current == key }}" href="{{ path }}?trade={{ key }}{% if extra %}&amp;{{ extra }}{% endif %}">{{ labels[0] if side == 'worker' else labels[1] }}{% if counts.get(key) %}<span class="n">{{ counts.get(key)|num }}</span>{% endif %}</a>
+  {% endfor %}
+</nav>
 {%- endmacro %}

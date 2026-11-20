@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Add a client{% endblock %}
+{% block content %}
+<p class="crumb"><a href="/clients">← Clients</a></p>
+<header class="page-head">
+  <div>
+    <span class="eyebrow eyebrow-client">Clients</span>
+    <h1>Someone called me</h1>
+    <p class="lede">Write down a person who contacted you about a job (phone, message, walk-in) so you can find them a worker and track the deal.</p>
+  </div>
+</header>
+
+{% if error %}<div class="notice notice-bad">{{ error }}</div>{% endif %}
+
+<section class="panel" style="max-width:760px">
+  <form method="post" action="/clients/new" class="stack">
+    {% include "_client_fields.html" %}
+    <label class="check consent">
+      <input type="checkbox" name="contacted_me" value="1" {{ 'checked' if form.get('contacted_me') }}>
+      <span>This person contacted me about this job and asked me to call them back.</span>
+    </label>
+    <div class="form-actions">
+      <button class="btn btn-client" type="submit">Add client</button>
+      <a href="/clients" class="muted">Cancel</a>
+    </div>
+  </form>
+</section>
+{% endblock %}

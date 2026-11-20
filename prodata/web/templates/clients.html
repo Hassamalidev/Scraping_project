@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% from "_macros.html" import client_row, trade_tabs %}
+{% block title %}Find clients{% endblock %}
+{% block content %}
+<header class="page-head">
+  <div>
+    <span class="eyebrow eyebrow-client">Clients</span>
+    <h1>People who want work done</h1>
+    <p class="lede">Each person here asked for a call back, either on your request form or by contacting you. New requests come first.</p>
+  </div>
+  <div class="actions">
+    <a class="btn btn-client" href="/clients/new">Someone called me</a>
+  </div>
+</header>
+
+{% set extra = [] %}
+{% if status and status != 'open' %}{% set _ = extra.append('status=' ~ status) %}{% endif %}
+{% if q %}{% set _ = extra.append('q=' ~ q|urlencode) %}{% endif %}
+{{ trade_tabs('/clients', trade, counts.open_by_trade, extra|join('&'), 'client') }}
+
+<form class="toolbar" method="get" action="/clients">
+  {% if trade %}<input type="hidden" name="trade" value="{{ trade }}">{% endif %}
+  {% if status %}<input type="hidden" name="status" value="{{ status }}">{% endif %}
+  <input class="search" type="search" name="q" value="{{ q }}" placeholder="Search name, phone, city or job">
+  <button class="btn btn-secondary" type="submit">Search</button>
+  {% set base_qs = ('trade=' ~ trade ~ '&') if trade else '' %}
+  <div class="segmented" role="group" aria-label="Status">
+    <a class="{{ 'active' if status == 'open' }}" href="/clients?{{ base_qs }}status=open">Open</a>
+    <a class="{{ 'active' if status == 'new' }}" href="/clients?{{ base_qs }}status=new">New{% if counts.new %} ({{ counts.new }}){% endif %}</a>
+    <a class="{{ 'active' if status == 'matched' }}" href="/clients?{{ base_qs }}status=matched">Worker found</a>
+    <a class="{{ 'active' if status == 'done' }}" href="/clients?{{ base_qs }}status=done">Done</a>
+    <a class="{{ 'active' if status == 'all' }}" href="/clients?{{ base_qs }}status=all">All</a>
+  </div>
+</form>
+
+<p class="result-count">{{ total|num }} {{ 'request' if total == 1 else 'requests' }}{% if pages > 1 %} · page {{ page }} of {{ pages }}{% endif %}</p>
+
+{% if rows %}
+  <div class="people">
+    {% for job, d in rows %}{{ client_row(job, d) }}{% endfor %}
+  </div>
+  {% if pages > 1 %}
+  <nav class="pager">
+    {% if page > 1 %}<a class="btn btn-secondary btn-small" href="/clients?{{ qs }}&amp;page={{ page - 1 }}">← Previous</a>{% endif %}
+    <span>Page {{ page }} of {{ pages }}</span>
+    {% if page < pages %}<a class="btn btn-secondary btn-small" href="/clients?{{ qs }}&amp;page={{ page + 1 }}">Next →</a>{% endif %}
+  </nav>
+  {% endif %}
+{% elif counts.total == 0 %}
+  <div class="people"><div class="empty-state">
+    <h3>No client requests yet</h3>
+    <p>Share your request link in ads, flyers, Nextdoor or Facebook posts. Everyone who fills it in shows up here with their number, ready to call.</p>
+    <p><a href="/request" target="_blank" rel="noopener" class="mono">{{ base_url }}/request</a></p>
+    <div class="actions">
+      <a class="btn btn-client" href="/request" target="_blank" rel="noopener">Preview the form</a>
+      <a class="btn btn-secondary" href="/clients/new">Add someone who called you</a>
+    </div>
+  </div></div>
+{% else %}
+  <div class="people"><div class="empty-state">
+    <h3>Nothing here</h3>
+    <p>No requests match this filter.</p>
+    <div class="actions"><a class="btn btn-secondary" href="/clients?status=all">Show all requests</a></div>
+  </div></div>
+{% endif %}
+{% endblock %}

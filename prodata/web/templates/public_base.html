@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{{ brand }}{% endblock %}</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="public">
+<header class="public-bar">
+  <div class="inner">
+    <span class="brand">
+      <span class="brand-mark" aria-hidden="true">{{ brand[:1] }}</span>
+      <span><span class="brand-name">{{ brand }}</span><span class="brand-sub">Local pros in {{ market.metros[0].name }}</span></span>
+    </span>
+    {% block barlink %}{% endblock %}
+  </div>
+</header>
+<main class="public-main">
+  {% block content %}{% endblock %}
+  <p class="public-foot">{{ brand }} · {{ market.metros[0].name }}, {{ market.state }}. We only use your details to call you about this, and we never sell them.</p>
+</main>
+</body>
+</html>

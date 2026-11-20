@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+{% from "_macros.html" import call_block, pill, worker_status, client_status %}
+{% block title %}{{ biz.dba_name or biz.legal_name }}{% endblock %}
+{% block content %}
+<p class="crumb"><a href="{{ back }}">← Workers</a></p>
+
+{% set saved = request.query_params.get('saved') %}
+{% if saved == 'added' %}<div class="notice notice-ok">Worker added. They're marked as interested and can be called.</div>
+{% elif saved == 'status' %}<div class="notice notice-ok">Saved.</div>{% endif %}
+
+<header class="page-head">
+  <div class="profile">
+    <div class="avatar avatar-worker avatar-lg">{{ (biz.contact_name or biz.legal_name)|initials }}</div>
+    <div>
+      <h1>{{ biz.dba_name or biz.legal_name }}</h1>
+      <div class="person-line">
+        {% for t in trades %}<span class="chip chip-worker">{{ t|trade }}</span>{% endfor %}
+        {% if biz.city %}<span>{{ biz.city }}{% if biz.state %}, {{ biz.state }}{% endif %}</span>{% endif %}
+        {% if biz.licenses %}<span class="dot-sep">Licensed</span>{% endif %}
+        {% if biz.contact_name %}<span class="dot-sep">Ask for {{ biz.contact_name }}</span>{% endif %}
+      </div>
+    </div>
+  </div>
+  <div>
+    {% if suppressed %}{{ pill('bad', 'Do not contact') }}
+    {% else %}{{ worker_status(outreach.status if outreach else 'not_contacted', interested, biz.signed_up_at is not none) }}{% endif %}
+  </div>
+</header>
+
+<div class="grid-side">
+  <div>
+    <section class="callcard" id="contact">
+      {% if suppressed %}
+        <p class="muted">This worker asked not to be contacted. Their numbers are hidden and never exported.</p>
+      {% elif phones %}
+        {% for p, d in phones %}
+        <div class="row">
+          <div>
+            <div class="label">{{ p.label|capitalize if p.label != 'unknown' else 'Phone' }}{% if p.consent_at %} · asked to be called {{ p.consent_at|day }}{% endif %}</div>
+            <div style="display:flex;gap:14px;align-items:center;margin-top:4px;flex-wrap:wrap">{{ call_block(p.e164, d, 'xl') }}</div>
+          </div>
+          <form method="post" action="/workers/{{ biz.id }}/suppress" onsubmit="return confirm('Never call this number again?')">
+            <input type="hidden" name="value" value="{{ p.e164 }}">
+            <input type="hidden" name="value_type" value="phone">
+            <input type="hidden" name="reason" value="opt_out">
+            <button class="btn-link" type="submit">They asked not to be called</button>
+          </form>
+        </div>
+        {% endfor %}
+        {% if not phones[0][1].ok and 'DNC' in phones[0][1].reason %}
+          <p class="meta">This number came from public data. Before cold-calling, <a href="/compliance">import the Do-Not-Call list</a> for this area code. Workers who sign up through your join link can be called right away.</p>
+        {% endif %}
+      {% else %}
+        <p class="muted">No phone number on record.</p>
+      {% endif %}
+      {% if emails and not suppressed %}
+        <div class="row">
+          <div>
+            <div class="label">Email</div>
+            {% for e, d in emails %}<div><a href="mailto:{{ e.email }}">{{ e.email }}</a></div>{% endfor %}
+          </div>
+        </div>
+      {% endif %}
+    </section>
+
+    <section class="panel">
+      <h2 style="margin-bottom:12px">Details</h2>
+      <dl class="facts">
+        <dt>Business</dt><dd>{{ biz.legal_name }}{% if biz.dba_name %} (trading as {{ biz.dba_name }}){% endif %}</dd>
+        {% if biz.contact_name %}<dt>Contact</dt><dd>{{ biz.contact_name }}</dd>{% endif %}
+        <dt>Address</dt><dd>{% if biz.address_line1 %}{{ biz.address_line1 }}{% if biz.address_line2 %}, {{ biz.address_line2 }}{% endif %}<br>{% endif %}{{ biz.city or '' }}{% if biz.state %}, {{ biz.state }}{% endif %} {{ biz.zip or '' }}{% if not biz.city and not biz.address_line1 %}—{% endif %}</dd>
+        <dt>Website</dt><dd>{% if biz.website %}<a href="{{ biz.website }}" rel="noopener" target="_blank">{{ biz.website }}</a>{% else %}—{% endif %}</dd>
+        {% for l in biz.licenses %}
+          <dt>Licence</dt><dd>{{ l.state }} {{ l.agency }} <span class="mono">{{ l.license_number }}</span> · {{ l.license_type or '' }}{% if l.status %} · {{ l.status }}{% endif %}{% if l.expires_on %} · expires {{ l.expires_on|dt }}{% endif %}</dd>
+        {% endfor %}
+        {% if biz.signed_up_at %}<dt>Signed up</dt><dd>{{ biz.signed_up_at|dt }}</dd>{% endif %}
+        <dt>Added</dt><dd class="muted">{{ biz.created_at|dt }} · worker #{{ biz.id }}</dd>
+      </dl>
+    </section>
+
+    {% if jobs %}
+    <section class="panel">
+      <h2 style="margin-bottom:8px">Jobs given to this worker</h2>
+      <table class="table">
+        <thead><tr><th>Client</th><th>Job</th><th>Status</th><th class="num">Client pays</th><th class="num">Worker gets</th></tr></thead>
+        <tbody>
+        {% for j in jobs %}
+          <tr>
+            <td><a href="/clients/{{ j.id }}">{{ j.name }}</a><div class="muted small">{{ j.created_at|day }}</div></td>
+            <td>{{ j.trade|need }}{% if j.city %} · {{ j.city }}{% endif %}</td>
+            <td>{{ client_status(j.status) }}</td>
+            <td class="num">{{ j.client_price|money }}</td>
+            <td class="num">{{ j.worker_price|money }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </section>
+    {% endif %}
+
+    <section class="panel">
+      <h2>Where this came from</h2>
+      <p class="meta" style="margin-top:4px">Every detail above links back to its original record.</p>
+      {% for r in raw_records %}
+        {% set src = sources_by_id.get(r.source_id) %}
+        <details class="provenance">
+          <summary>
+            <span class="strong">{{ src.name if src else r.source_id }}</span>
+            <span class="muted small">{{ r.fetched_at|dt }}</span>
+          </summary>
+          {% if r.url %}<p class="small" style="margin:6px 0"><a href="{{ r.url }}" rel="noopener" target="_blank" class="mono">{{ r.url[:110] }}{{ '…' if r.url|length > 110 }}</a></p>{% endif %}
+          {% if r.source_id == 'osm_overpass' %}<p class="small muted">Data © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a>, ODbL.</p>{% endif %}
+          <table class="table table-kv">
+            <tbody>
+            {% for k, v in r.payload.items() %}{% if v not in (None, '', []) %}
+              <tr><th class="mono small">{{ k }}</th><td class="small">{{ v }}</td></tr>
+            {% endif %}{% endfor %}
+            </tbody>
+          </table>
+        </details>
+      {% endfor %}
+    </section>
+  </div>
+
+  <aside>
+    <section class="panel" id="call-log">
+      <h2 style="margin-bottom:4px">How did the call go?</h2>
+      {% if outreach and outreach.last_contact_at %}<p class="muted small">Last call {{ outreach.last_contact_at|dt }}</p>{% endif %}
+      <form method="post" action="/workers/{{ biz.id }}/status" class="stack" style="margin-top:12px">
+        {% set current = outreach.status if outreach else ('interested' if biz.signed_up_at else 'not_contacted') %}
+        <div class="choice-grid" role="radiogroup" aria-label="Call result">
+          {% for s in outreach_statuses %}
+            <label class="choice{{ ' choice-ok' if s in ('interested', 'signed_up') }}{{ ' choice-bad' if s == 'do_not_contact' }}">
+              <input type="radio" name="status" value="{{ s }}" {{ 'checked' if current == s }}>
+              <span>{{ WORKER_STATUS_LABELS[s] }}</span>
+            </label>
+          {% endfor %}
+        </div>
+        <label class="field">
+          <span>Notes</span>
+          <textarea name="notes" rows="4" placeholder="Rates, availability, areas they cover, call back Tuesday…">{{ outreach.notes if outreach and outreach.notes else '' }}</textarea>
+        </label>
+        <label class="check"><input type="checkbox" name="called_now" value="1" checked> I just called them</label>
+        <div class="form-actions"><button class="btn" type="submit">Save</button></div>
+      </form>
+      <p class="meta">“Do not contact” hides this worker for good and keeps them out of every list.</p>
+    </section>
+
+    {% if open_jobs and not suppressed %}
+    <section class="panel">
+      <h2 style="margin-bottom:8px">Open jobs they could take</h2>
+      {% for j in open_jobs %}
+        <div style="padding:8px 0;border-top:1px solid var(--border)">
+          <a class="strong" href="/clients/{{ j.id }}">{{ j.name }}</a>
+          <div class="muted small">{{ j.trade|need }}{% if j.city %} · {{ j.city }}{% endif %} · {{ j.created_at|ago }}</div>
+        </div>
+      {% endfor %}
+    </section>
+    {% endif %}
+  </aside>
+</div>
+{% endblock %}

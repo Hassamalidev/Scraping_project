@@ -9,16 +9,19 @@ Rules baked in here:
 from __future__ import annotations
 
 from datetime import date, datetime, timezone
+from decimal import Decimal
 
 from geoalchemy2 import Geometry
 from sqlalchemy import (
     BigInteger,
     Boolean,
+    CheckConstraint,
     Date,
     DateTime,
     Float,
     ForeignKey,
     Integer,
+    Numeric,
     String,
     Text,
     UniqueConstraint,
@@ -92,6 +95,9 @@ class Business(Base):
     score_breakdown: Mapped[dict | None] = mapped_column(JSONB)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+    # set when the worker signed up through the public "Join" form
+    signed_up_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    contact_name: Mapped[str | None] = mapped_column(Text)  # the person to ask for
 
     licenses: Mapped[list[License]] = relationship(back_populates="business")
     phones: Mapped[list[Phone]] = relationship(back_populates="business")
@@ -177,6 +183,8 @@ class Phone(Base):
     dnc_status: Mapped[str] = mapped_column(String(20), default="unknown")  # unknown|clear|listed
     dnc_checked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     call_ok: Mapped[bool] = mapped_column(Boolean, default=False)
+    # the owner of this number asked to be called (sign-up form, or contacted us directly)
+    consent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     raw_record_id: Mapped[int] = mapped_column(ForeignKey("raw_records.id"))
 
     business: Mapped[Business] = relationship(back_populates="phones")
@@ -246,6 +254,57 @@ class OutreachStatus(Base):
     business: Mapped[Business] = relationship(back_populates="outreach")
 
 
+class JobRequest(Base):
+    """Someone who wants work done. Only ever created by that person (public request
+    form, with recorded consent) or by the operator after that person contacted them.
+    Never scraped."""
+
+    __tablename__ = "job_requests"
+    __table_args__ = (CheckConstraint("consent_at IS NOT NULL", name="ck_job_request_consent"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+    # who and what
+    name: Mapped[str] = mapped_column(Text)
+    phone_e164: Mapped[str] = mapped_column(String(20), index=True)
+    email: Mapped[str | None] = mapped_column(String(320))
+    trade: Mapped[str] = mapped_column(String(40), index=True)
+    details: Mapped[str | None] = mapped_column(Text)
+    address: Mapped[str | None] = mapped_column(Text)
+    city: Mapped[str | None] = mapped_column(String(120))
+    zip: Mapped[str | None] = mapped_column(String(10))
+    timing: Mapped[str | None] = mapped_column(String(40))
+    budget: Mapped[str | None] = mapped_column(Text)
+    # how we got it, and the consent record
+    origin: Mapped[str] = mapped_column(String(20))  # request_form|contacted_me
+    consent_text: Mapped[str] = mapped_column(Text)
+    consent_version: Mapped[str] = mapped_column(String(20))
+    consent_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    consent_ip: Mapped[str | None] = mapped_column(String(64))
+    consent_user_agent: Mapped[str | None] = mapped_column(Text)
+    consent_page_url: Mapped[str | None] = mapped_column(Text)
+    # working it
+    status: Mapped[str] = mapped_column(String(20), default="new", index=True)
+    last_called_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    notes: Mapped[str | None] = mapped_column(Text)
+    worker_id: Mapped[int | None] = mapped_column(ForeignKey("businesses.id"))
+    # the deal: recorded only, money moves outside the app
+    client_price: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))
+    worker_price: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))
+    payment_method: Mapped[str | None] = mapped_column(String(20))
+    payment_status: Mapped[str] = mapped_column(String(20), default="unpaid")  # unpaid|deposit|paid
+    paid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    worker: Mapped[Business | None] = relationship()
+
+    @property
+    def my_cut(self) -> Decimal | None:
+        if self.client_price is None or self.worker_price is None:
+            return None
+        return self.client_price - self.worker_price
+
+
 class MergeLog(Base):
     __tablename__ = "merge_log"
 
@@ -281,3 +340,6 @@ OUTREACH_STATUSES = [
 ]
 SUPPRESSION_TYPES = ["phone", "email", "domain", "business_id"]
 SUPPRESSION_REASONS = ["opt_out", "dnc_request", "bounce", "complaint", "manual"]
+CLIENT_STATUSES = ["new", "called", "matched", "done", "lost", "do_not_contact"]
+PAYMENT_METHODS = ["cash", "bank_transfer", "zelle", "venmo", "cash_app", "paypal", "check", "other"]
+PAYMENT_STATUSES = ["unpaid", "deposit", "paid"]

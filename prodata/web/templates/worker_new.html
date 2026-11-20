@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Add a worker{% endblock %}
+{% block content %}
+<p class="crumb"><a href="/workers">← Workers</a></p>
+<header class="page-head">
+  <div>
+    <span class="eyebrow eyebrow-worker">Workers</span>
+    <h1>Add a worker</h1>
+    <p class="lede">For a worker who called you or told you they want jobs. Workers can also sign up themselves at <a href="/join" target="_blank" rel="noopener">/join</a>.</p>
+  </div>
+</header>
+
+{% if error %}<div class="notice notice-bad">{{ error }}</div>{% endif %}
+
+<section class="panel" style="max-width:760px">
+  <form method="post" action="/workers/new" class="stack">
+    {% include "_worker_fields.html" %}
+    <label class="check consent">
+      <input type="checkbox" name="contacted_me" value="1" {{ 'checked' if form.get('contacted_me') }}>
+      <span>This worker contacted me, or agreed that I can call them about jobs.</span>
+    </label>
+    <div class="form-actions">
+      <button class="btn btn-worker" type="submit">Add worker</button>
+      <a href="/workers" class="muted">Cancel</a>
+    </div>
+  </form>
+</section>
+{% endblock %}

@@ -1,26 +1,39 @@
-# Tradebook — Pro Data Engine
+# Tradebook
 
-Tradebook builds a verified database of local trade businesses (plumbers, HVAC and
-electrical contractors, and more) from **official licence data**, and tells you, for
-every phone number and email, whether you're allowed to contact it.
+Tradebook connects people who need work done with the trades who do it, in one place:
 
-It is Phase 1 of a home-services lead marketplace (see [project_spec.md](project_spec.md)).
+- **Find workers**: plumbers, carpenters, handymen, flooring, painters, roofers, electricians and
+  HVAC techs. Some are collected from official licence data and OpenStreetMap; others sign up on
+  your public **Join** page (`/join`).
+- **Find clients**: people who want a pro. They fill in your public **Request a pro** page
+  (`/request`), or you add someone who called you.
+- **Call both sides**: every person has a big phone number and a *Call* button. Log how each
+  call went.
+- **Deals**: write down what the client pays, what the worker gets, how the client paid
+  (cash, Zelle, bank transfer…) and whether it's paid. Your cut is worked out for you. Money is
+  never handled by the app.
 
-> **Homeowners are never scraped.** Homeowner leads come only from people who ask for a pro
-> themselves, through a request form with recorded consent (Phase 2 in the spec).
+> **Clients are never scraped.** Clients come only from people who ask for a pro themselves
+> (the request form records their consent: wording, time, IP, page) or who contacted you directly.
+> Scraping private people's numbers to cold-call them is illegal in the US (TCPA, up to $1,500
+> per call) and is excluded by the spec.
 
-- **Business data only.** Licensed businesses and their published business contacts. Never homeowners.
+How workers are collected:
+
+- **Business data only.** Businesses and their published business contacts.
 - **Official sources first.** State licence bulk files and open-data APIs, not scraping.
 - **Polite.** robots.txt honoured, ≤ 1 request/second per domain, retries with backoff, everything cached.
 - **Provenance on everything.** Every value links to the raw source record it came from.
-- **Compliance built in.** DNC status and a permanent suppression list on every number; nothing is
-  marked callable without fresh (≤ 31-day) Do-Not-Call data. No automated calls or texts, ever.
+- **Call rules built in.** People who asked to be called (sign-ups, client requests) can be called
+  straight away. Workers found in public data can be called once fresh (≤ 31-day) Do-Not-Call data
+  is imported for their area code. Anyone who asks to stop goes on a permanent do-not-contact list.
+  No automated calls or texts, ever.
 
 ## What's in it
 
 | Part | What it does |
 |---|---|
-| Web app (`prodata web`) | Browse and filter pros, see why each number is or isn't callable, log outreach, manage suppression, import DNC files, run sources, download CSVs |
+| Web app (`prodata web`) | Home with the two sides, Find workers, Find clients, Deals, public `/request` and `/join` forms, do-not-call list, data sources |
 | CLI (`prodata …`) | The same pipeline from the terminal, for scheduling |
 | Connectors | **TX TSBPE** (plumbing — Responsible Master Plumbers), **TX TDLR** (HVAC and electrical contractors, via data.texas.gov) and **OpenStreetMap** (carpenters, handymen, flooring, painters, roofers and more — trades Texas doesn't license) |
 | Database | PostgreSQL 16 + PostGIS (Docker), SQLAlchemy 2, Alembic migrations |
@@ -41,20 +54,30 @@ uv run prodata web                # open http://127.0.0.1:8000
 ```
 
 Before calling anyone, import the National DNC Registry area-code files your company downloads
-(`uv run prodata dnc import <file>` or the Compliance page). Until then every number shows
-**Blocked — no DNC data for this area code**, by design.
+(`uv run prodata dnc import <file>` or the Do-not-call page) before cold-calling workers found in
+public data. Until then their numbers show **Don't call yet: no DNC data for this area code**.
+People who signed up or asked for a call are callable straight away.
 
 ## Using the web app
 
-- **Overview**: counts, coverage by trade, source health, recent runs, compliance warnings.
-- **Pros**: search by name, licence number or phone; filter by trade, city, outreach status, "cleared to call".
-  *Download CSV* exports exactly what you're looking at (suppressed values are always removed).
-  *Email-tool CSV* gives first-touch rows for your email tool (verified emails only).
-- **A pro's page**: phones with DNC status and the reason they can or can't be called, emails, licences,
-  an outreach log per channel (status, notes, "contacted just now"), and *Where this came from*:
-  the original source records.
-- **Compliance**: add to the suppression list (phone, email, domain, business); upload DNC files and see their age.
-- **Sources**: run a source, see run history, unmapped licence classes and errors.
+- **Home**: the two sides. Worker and client counts per trade, the links to share, money this
+  month, and the clients waiting for a call.
+- **Find workers**: pick a trade (Plumber, Carpenter, Handyman…), search by name or phone, filter
+  *Want work* / *Not called yet* / *OK to call*. People who want work are listed first. A worker's
+  page has the call log ("Interested", "Not interested", "Do not contact", notes), licence details,
+  the jobs you gave them, and *Where this came from*.
+- **Find clients**: requests by trade and status (New → Called → Worker found → Job done). A client's
+  page has the job, their number, **matching workers** (interested first, same city next) with a
+  *Choose* button, the call log, **the deal** and the consent record.
+- **Deals**: every priced job with client price, worker pay, your cut, payment method and status.
+  Also shows totals for the month, money collected and money still owed.
+- **Public pages**: `/request` (for clients) and `/join` (for workers). Share the links in ads,
+  flyers and posts. Both need a consent tick-box and have a hidden spam trap.
+- **Do-not-call list**: people who asked not to be contacted, plus National DNC Registry imports.
+- **Data sources**: collection runs and their results.
+
+**Putting it online:** set `ADMIN_PASSWORD` in `.env` first. Every page except `/request` and
+`/join` then asks for it (user `admin`). `BRAND_NAME` sets the name shown on the public pages.
 
 ## CLI
 
@@ -99,6 +122,7 @@ prodata/
   connectors/   base.py  tx_tsbpe_plumbing.py  tx_tdlr_licenses.py
   pipeline/     collect.py  load.py  normalize.py  compliance.py  export.py
   models/       SQLAlchemy models (spec section 5)
+  people.py     workers, client requests, matching, deals
   web/          FastAPI app, Jinja templates, CSS
 config/         market.yaml  trade_map.yaml
 docs/sources/   one page per data source (written before its connector)

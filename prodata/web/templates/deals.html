@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% from "_macros.html" import payment_status, client_status %}
+{% block title %}Deals{% endblock %}
+{% block content %}
+<header class="page-head">
+  <div>
+    <h1>Deals</h1>
+    <p class="lede">What each client pays, what the worker gets, and your cut. You collect the money yourself by cash, transfer, Zelle and so on, then mark the deal paid here.</p>
+  </div>
+</header>
+
+<div class="money-strip">
+  <div><div class="label">This month</div><div class="value">{{ month.agreed|money }}</div><div class="hint">{{ month.count }} {{ 'deal' if month.count == 1 else 'deals' }} agreed</div></div>
+  <div><div class="label">Your cut this month</div><div class="value">{{ month.cut|money }}</div><div class="hint">client price minus worker pay</div></div>
+  <div><div class="label">Collected (all time)</div><div class="value value-ok">{{ all_time.collected|money }}</div><div class="hint">your cut on paid jobs</div></div>
+  <div><div class="label">Still owed to you</div><div class="value value-warn">{{ all_time.owed|money }}</div><div class="hint">your cut on unpaid jobs</div></div>
+</div>
+
+{% if waiting %}<div class="notice notice-warn">{{ waiting }} {{ 'job has' if waiting == 1 else 'jobs have' }} a worker but no price yet. <a href="/clients?status=matched">Set the price</a></div>{% endif %}
+
+<div class="toolbar">
+  <div class="segmented" role="group" aria-label="Show">
+    <a class="{{ 'active' if show == 'all' }}" href="/deals">All</a>
+    <a class="{{ 'active' if show == 'unpaid' }}" href="/deals?show=unpaid">Not paid yet</a>
+    <a class="{{ 'active' if show == 'paid' }}" href="/deals?show=paid">Paid</a>
+  </div>
+  {% if by_method %}
+    <span class="muted small">Paid by: {% for m, total in by_method.items() %}{{ PAYMENT_METHOD_LABELS.get(m, 'Not recorded') if m else 'Not recorded' }} {{ total|money }}{{ ' · ' if not loop.last }}{% endfor %}</span>
+  {% endif %}
+</div>
+
+<section class="panel" style="padding:6px 10px">
+  {% if rows %}
+  <div class="table-wrap">
+  <table class="table">
+    <thead><tr><th>Client</th><th>Worker</th><th>Job</th><th class="num">Client pays</th><th class="num">Worker gets</th><th class="num">Your cut</th><th>Paid with</th><th>Payment</th></tr></thead>
+    <tbody>
+    {% for j in rows %}
+      <tr>
+        <td><a class="strong" href="/clients/{{ j.id }}#deal">{{ j.name }}</a><div class="muted small">{{ j.created_at|day }}</div></td>
+        <td>{% if j.worker %}<a href="/workers/{{ j.worker.id }}">{{ j.worker.dba_name or j.worker.legal_name }}</a>{% else %}<span class="muted">—</span>{% endif %}</td>
+        <td>{{ j.trade|need }}<div>{{ client_status(j.status) }}</div></td>
+        <td class="num">{{ j.client_price|money }}</td>
+        <td class="num">{{ j.worker_price|money }}</td>
+        <td class="num strong">{{ j.my_cut|money }}</td>
+        <td>{{ PAYMENT_METHOD_LABELS.get(j.payment_method, '—') if j.payment_method else '—' }}</td>
+        <td>{{ payment_status(j.payment_status) }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <h3>No deals yet</h3>
+    <p>Open a client, choose a worker, then fill in “The deal” with the price you agreed.</p>
+    <div class="actions"><a class="btn btn-client" href="/clients">Go to clients</a></div>
+  </div>
+  {% endif %}
+</section>
+{% endblock %}

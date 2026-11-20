@@ -1,11 +1,11 @@
 {% extends "base.html" %}
 {% from "_macros.html" import status %}
-{% block title %}Compliance{% endblock %}
+{% block title %}Do-not-call list{% endblock %}
 {% block content %}
 <header class="page-head">
   <div>
-    <h1>Compliance</h1>
-    <p class="lede">Do-Not-Call data and the permanent suppression list. Both are checked again on every export.</p>
+    <h1>Do-not-call list</h1>
+    <p class="lede">People who asked not to be contacted, and the National Do-Not-Call Registry. Anyone on these lists is never shown as callable, and never exported.</p>
   </div>
 </header>
 
@@ -14,7 +14,7 @@
 
 <div class="grid-2">
   <section class="panel">
-    <h2>Add to suppression list</h2>
+    <h2>Someone asked not to be contacted</h2>
     <p class="meta">Permanent. A suppressed phone, email, domain or business is never exported and never shown as contactable.</p>
     <form method="post" action="/compliance/suppress" class="stack">
       <label class="field">
@@ -32,14 +32,14 @@
         </label>
       </div>
       <label class="field"><span>Note</span><input name="note" placeholder="Optional"></label>
-      <div><button class="btn" type="submit">Suppress</button></div>
+      <div><button class="btn" type="submit">Add to list</button></div>
     </form>
   </section>
 
   <section class="panel">
-    <h2>Import DNC Registry file</h2>
+    <h2>Import the National Do-Not-Call Registry</h2>
     <p class="meta">
-      Upload the area-code files your company downloads from the National Do Not Call Registry.
+      Needed before cold-calling workers found in public data. Download your area codes (214, 469, 972, 817, 682, 940…) from telemarketing.donotcall.gov and upload them here. Workers who signed up and clients who asked for a call don't need this.
       Data older than {{ max_age }} days blocks calling for that area code until it is re-imported.
     </p>
     <form method="post" action="/compliance/dnc" enctype="multipart/form-data" class="stack">
@@ -62,13 +62,13 @@
       </tbody>
     </table>
     {% else %}
-    <p class="empty">Nothing imported yet — all numbers are blocked for calling.</p>
+    <p class="empty">Nothing imported yet. Workers found in public data can't be called until you import this. People who asked for a call can be called now.</p>
     {% endif %}
   </section>
 </div>
 
 <section class="panel">
-  <h2>Suppression list <span class="muted">({{ rows|length }})</span></h2>
+  <h2>Do-not-contact list <span class="muted">({{ rows|length }})</span></h2>
   {% if rows %}
   <table class="table">
     <thead><tr><th>Added</th><th>Type</th><th>Value</th><th>Reason</th><th>Note</th></tr></thead>
@@ -77,7 +77,7 @@
       <tr>
         <td class="nowrap">{{ r.added_at|dt }}</td>
         <td>{{ r.value_type.replace('_', ' ') }}</td>
-        <td class="mono">{% if r.value_type == 'business_id' %}<a href="/pros/{{ r.value }}">#{{ r.value }}</a>{% elif r.value_type == 'phone' %}{{ r.value|phone }}{% else %}{{ r.value }}{% endif %}</td>
+        <td class="mono">{% if r.value_type == 'business_id' %}<a href="/workers/{{ r.value }}">worker #{{ r.value }}</a>{% elif r.value_type == 'phone' %}{{ r.value|phone }}{% else %}{{ r.value }}{% endif %}</td>
         <td>{{ r.reason.replace('_', ' ') }}</td>
         <td class="muted">{{ r.note or '' }}</td>
       </tr>

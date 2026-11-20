@@ -53,6 +53,13 @@ def test_suppression_overrides_everything():
     assert not d.ok and d.reason == "on suppression list"
 
 
+def test_person_who_asked_to_be_called_can_be_called_without_dnc_data():
+    d = call(dnc_imported_at=None, consented=True)
+    assert d.ok and d.reason == "asked to be called"
+    # …but suppression still wins
+    assert not call(dnc_imported_at=None, consented=True, suppressed=True).ok
+
+
 def test_invalid_number_is_blocked():
     assert not call(e164="+1555").ok
 

@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% from "_macros.html" import client_row, call_block %}
+{% block title %}Home{% endblock %}
+{% block content %}
+<header class="page-head">
+  <div>
+    <h1>What do you need today?</h1>
+    <p class="lede">Find a worker for a job, or find people who need work done. Call them, agree the price, and log the deal.</p>
+  </div>
+</header>
+
+<div class="doors">
+  <section class="door door-worker">
+    <span class="eyebrow eyebrow-worker">Workers</span>
+    <h2>Find a worker</h2>
+    <p class="muted">Plumbers, carpenters, handymen and other trades who can take a job.</p>
+    <div class="big">{{ workers.total|num }}</div>
+    <div class="big-sub">workers found{% if workers.interested %} · <a href="/workers?show=interested">{{ workers.interested|num }} want work</a>{% endif %}</div>
+    <div class="trade-grid">
+      {% for key, labels in TRADES.items() %}
+        <a class="trade-tile" href="/workers?trade={{ key }}">{{ labels[0] }}<span class="n">{{ workers.by_trade.get(key, 0)|num }}</span></a>
+      {% endfor %}
+    </div>
+    <div class="actions">
+      <a class="btn btn-worker" href="/workers">Browse all workers</a>
+      <a class="btn btn-secondary" href="/workers/new">Add a worker</a>
+    </div>
+    <div class="share">
+      <span class="share-label">Send this to workers so they can sign up for jobs:</span>
+      <input readonly value="{{ base_url }}/join" onclick="this.select()" aria-label="Worker sign-up link">
+      <a class="btn btn-secondary btn-small" href="/join" target="_blank" rel="noopener">Open</a>
+    </div>
+  </section>
+
+  <section class="door door-client">
+    <span class="eyebrow eyebrow-client">Clients</span>
+    <h2>Find a client</h2>
+    <p class="muted">People who asked for a plumber, carpenter or other pro and want a call back.</p>
+    <div class="big">{{ clients.new|num }}</div>
+    <div class="big-sub">new requests waiting for a call{% if clients.open > clients.new %} · {{ clients.open|num }} open in total{% endif %}</div>
+    <div class="trade-grid">
+      {% for key, labels in TRADES.items() %}
+        <a class="trade-tile" href="/clients?trade={{ key }}">{{ labels[1] }}<span class="n">{{ clients.open_by_trade.get(key, 0)|num }}</span></a>
+      {% endfor %}
+    </div>
+    <div class="actions">
+      <a class="btn btn-client" href="/clients">See client requests</a>
+      <a class="btn btn-secondary" href="/clients/new">Someone called me</a>
+    </div>
+    <div class="share">
+      <span class="share-label">Share this link (ads, flyers, social posts) so people can ask for a pro:</span>
+      <input readonly value="{{ base_url }}/request" onclick="this.select()" aria-label="Client request link">
+      <a class="btn btn-secondary btn-small" href="/request" target="_blank" rel="noopener">Open</a>
+    </div>
+  </section>
+</div>
+
+<div class="money-strip">
+  <div><div class="label">Deals this month</div><div class="value">{{ month.count }}</div><div class="hint">{{ month.agreed|money }} agreed with clients</div></div>
+  <div><div class="label">Your cut this month</div><div class="value">{{ month.cut|money }}</div><div class="hint">client price minus worker pay</div></div>
+  <div><div class="label">Collected (all time)</div><div class="value value-ok">{{ all_time.collected|money }}</div><div class="hint">jobs marked paid in full</div></div>
+  <div><div class="label">Still owed to you</div><div class="value value-warn">{{ all_time.owed|money }}</div><div class="hint"><a href="/deals?show=unpaid">see unpaid deals</a></div></div>
+</div>
+
+<div class="grid-side">
+  <section class="panel">
+    <div class="panel-head">
+      <h2>Clients to call</h2>
+      <a href="/clients">All requests →</a>
+    </div>
+    {% if recent %}
+      <div class="people" style="border:0">
+        {% for job, d in recent %}{{ client_row(job, d) }}{% endfor %}
+      </div>
+    {% else %}
+      <div class="empty-state">
+        <h3>No client requests yet</h3>
+        <p>Clients appear here when they fill in your request form, or when you add someone who called you.</p>
+        <div class="actions"><a class="btn btn-client" href="/request" target="_blank" rel="noopener">Preview the request form</a></div>
+      </div>
+    {% endif %}
+  </section>
+
+  <aside>
+    <section class="panel">
+      <h2 style="margin-bottom:10px">Getting set up</h2>
+      <ol class="setup">
+        <li class="{{ 'done' if workers.total }}"><div><b>Collect workers</b><br><span class="muted small">In a terminal in the project folder run <code>uv run prodata collect --all</code>. It pulls licensed plumbers, HVAC and electricians from the state, plus carpenters, handymen and others from OpenStreetMap.</span></div></li>
+        <li class="{{ 'done' if workers.interested }}"><div><b>Get workers to sign up</b><br><span class="muted small">Send the <a href="/join" target="_blank" rel="noopener">join link</a> to workers you call.</span></div></li>
+        <li class="{{ 'done' if clients.total }}"><div><b>Get client requests</b><br><span class="muted small">Share the <a href="/request" target="_blank" rel="noopener">request link</a> in ads and posts.</span></div></li>
+        <li class="{{ 'done' if dnc_loaded }}"><div><b>Load the Do-Not-Call list</b><br><span class="muted small">Needed before you cold-call workers you found. People who signed up or asked for a call can be called right away. <a href="/compliance">Import it</a></span></div></li>
+      </ol>
+    </section>
+    {% if new_workers %}
+    <section class="panel">
+      <div class="panel-head"><h2>New worker sign-ups</h2><a href="/workers?show=interested">All →</a></div>
+      {% for b in new_workers %}
+        <div style="padding:8px 0;border-top:1px solid var(--border)">
+          <a class="strong" href="/workers/{{ b.id }}">{{ b.dba_name or b.legal_name }}</a>
+          <div class="muted small">{% for t in b.trades|map(attribute='trade')|unique %}{{ t|trade }}{{ ', ' if not loop.last }}{% endfor %}{% if b.city %} · {{ b.city }}{% endif %} · {{ b.signed_up_at|ago }}</div>
+        </div>
+      {% endfor %}
+    </section>
+    {% endif %}
+  </aside>
+</div>
+{% endblock %}

@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% from "_macros.html" import worker_row, trade_tabs %}
+{% block title %}Find workers{% endblock %}
+{% block content %}
+<header class="page-head">
+  <div>
+    <span class="eyebrow eyebrow-worker">Workers</span>
+    <h1>{% if trade %}{{ trade|plural }}{% else %}Find a worker{% endif %}</h1>
+    <p class="lede">People who want work are listed first. Tap Call, then record how it went on their page.</p>
+  </div>
+  <div class="actions">
+    <a class="btn btn-secondary" href="/workers.csv?{{ qs }}">Download list</a>
+    <a class="btn btn-worker" href="/workers/new">Add a worker</a>
+  </div>
+</header>
+
+{% set extra = [] %}
+{% if show and show != 'all' %}{% set _ = extra.append('show=' ~ show) %}{% endif %}
+{% if q %}{% set _ = extra.append('q=' ~ q|urlencode) %}{% endif %}
+{% if city %}{% set _ = extra.append('city=' ~ city|urlencode) %}{% endif %}
+{{ trade_tabs('/workers', trade, counts.by_trade, extra|join('&'), 'worker') }}
+
+<form class="toolbar" method="get" action="/workers">
+  {% if trade %}<input type="hidden" name="trade" value="{{ trade }}">{% endif %}
+  {% if show and show != 'all' %}<input type="hidden" name="show" value="{{ show }}">{% endif %}
+  <input class="search" type="search" name="q" value="{{ q }}" placeholder="Search name or phone number">
+  <select name="city" onchange="this.form.submit()" style="width:auto">
+    <option value="">Any city</option>
+    {% for c in cities %}<option value="{{ c }}" {{ 'selected' if c == city }}>{{ c }}</option>{% endfor %}
+  </select>
+  <button class="btn btn-secondary" type="submit">Search</button>
+  {% set base_qs = ('trade=' ~ trade ~ '&') if trade else '' %}
+  <div class="segmented" role="group" aria-label="Show">
+    <a class="{{ 'active' if show == 'all' }}" href="/workers?{{ base_qs }}show=all">Everyone</a>
+    <a class="{{ 'active' if show == 'interested' }}" href="/workers?{{ base_qs }}show=interested">Want work</a>
+    <a class="{{ 'active' if show == 'not_called' }}" href="/workers?{{ base_qs }}show=not_called">Not called yet</a>
+    <a class="{{ 'active' if show == 'callable' }}" href="/workers?{{ base_qs }}show=callable">OK to call</a>
+  </div>
+</form>
+
+<p class="result-count">{{ total|num }} {{ 'worker' if total == 1 else 'workers' }}{% if pages > 1 %} · page {{ page }} of {{ pages }}{% endif %}</p>
+
+{% if rows %}
+  <div class="people">
+    {% for r in rows %}{{ worker_row(r) }}{% endfor %}
+  </div>
+  {% if pages > 1 %}
+  <nav class="pager">
+    {% if page > 1 %}<a class="btn btn-secondary btn-small" href="/workers?{{ qs }}&amp;page={{ page - 1 }}">← Previous</a>{% endif %}
+    <span>Page {{ page }} of {{ pages }}</span>
+    {% if page < pages %}<a class="btn btn-secondary btn-small" href="/workers?{{ qs }}&amp;page={{ page + 1 }}">Next →</a>{% endif %}
+  </nav>
+  {% endif %}
+{% elif counts.total == 0 %}
+  <div class="people"><div class="empty-state">
+    <h3>No workers yet</h3>
+    <p>Collect them from public business data. In a terminal in the project folder, run:</p>
+    <p><code>uv run prodata collect --all</code></p>
+    <p>Or send workers your sign-up link: <a href="/join" target="_blank" rel="noopener">{{ base_url }}/join</a></p>
+    <div class="actions"><a class="btn btn-worker" href="/workers/new">Add a worker yourself</a></div>
+  </div></div>
+{% else %}
+  <div class="people"><div class="empty-state">
+    <h3>Nobody matches</h3>
+    <p>Try another trade, city or filter.</p>
+    <div class="actions"><a class="btn btn-secondary" href="/workers">Clear filters</a></div>
+  </div></div>
+{% endif %}
+{% endblock %}

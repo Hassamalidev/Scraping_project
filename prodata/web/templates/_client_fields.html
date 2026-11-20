@@ -1,0 +1,26 @@
+<div class="form-grid">
+  <label class="field full">
+    <span>What do you need?</span>
+    <select name="trade" required>
+      <option value="">Choose a kind of work…</option>
+      {% for key, labels in TRADES.items() %}<option value="{{ key }}" {{ 'selected' if form.get('trade') == key }}>{{ labels[1] }}</option>{% endfor %}
+    </select>
+  </label>
+  <label class="field full">
+    <span>Describe the job</span>
+    <textarea name="details" rows="4" placeholder="e.g. Kitchen sink is leaking under the cabinet. Water is off for now.">{{ form.get('details', '') }}</textarea>
+  </label>
+  <label class="field"><span>Name</span><input name="name" required autocomplete="name" value="{{ form.get('name', '') }}"></label>
+  <label class="field"><span>Phone</span><input name="phone" required type="tel" autocomplete="tel" placeholder="(214) 555-0123" value="{{ form.get('phone', '') }}"></label>
+  <label class="field"><span>City</span><input name="city" autocomplete="address-level2" value="{{ form.get('city', '') }}"></label>
+  <label class="field"><span>ZIP</span><input name="zip" inputmode="numeric" autocomplete="postal-code" value="{{ form.get('zip', '') }}"></label>
+  <label class="field">
+    <span>When?</span>
+    <select name="timing">
+      {% for key, label in TIMINGS.items() %}<option value="{{ key }}" {{ 'selected' if form.get('timing') == key }}>{{ label }}</option>{% endfor %}
+    </select>
+  </label>
+  <label class="field"><span>Budget <span class="opt">(optional)</span></span><input name="budget" placeholder="e.g. around $300" value="{{ form.get('budget', '') }}"></label>
+  <label class="field full"><span>Email <span class="opt">(optional)</span></span><input name="email" type="email" autocomplete="email" value="{{ form.get('email', '') }}"></label>
+  <label class="field full"><span>Street address <span class="opt">(optional)</span></span><input name="address" autocomplete="street-address" value="{{ form.get('address', '') }}"></label>
+</div>
