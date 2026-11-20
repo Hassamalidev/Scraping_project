@@ -56,7 +56,7 @@ def test_unreachable_source_shows_plain_message(web):
     web.post("/collect", data={"source": ["tx_tsbpe_plumbing"]})
     page = web.get("/collect").text
     assert "Didn&#39;t finish" in page or "Didn't finish" in page
-    assert "Couldn&#39;t connect to the website" in page or "Couldn't connect to the website" in page
+    assert "look up the website" in page
 
 
 def test_error_messages_are_plain_language():
@@ -66,3 +66,8 @@ def test_error_messages_are_plain_language():
     assert "<" not in f("SourceError: something <b>odd</b>")
     assert "busy" in f("SourceError: HTTP 504 from Overpass: gateway timeout")
     assert "Couldn't connect" in f("SourceUnreachable: Could not reach tsbpe.texas.gov to read robots.txt")
+
+
+def test_dns_failure_explains_what_to_do():
+    msg = web_app._friendly_error("SourceUnreachable: Could not reach x (ConnectError: [Errno 11001] getaddrinfo failed)")
+    assert "look up the website" in msg and "start.bat" in msg

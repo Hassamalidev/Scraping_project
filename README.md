@@ -40,6 +40,11 @@ How workers are collected:
 
 ## Quick start
 
+**Windows, easiest:** open Docker Desktop, then double-click `start.bat`. It starts the database,
+updates it and opens the app in your browser. Keep its window open while you work.
+
+By hand:
+
 Needs Docker Desktop, Python 3.12 and [uv](https://docs.astral.sh/uv/).
 
 ```bash

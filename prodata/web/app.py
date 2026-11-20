@@ -884,6 +884,12 @@ def _friendly_error(message: str | None) -> str:
     m = message or ""
     code_match = re.search(r"HTTP (\d{3})", m)
     code = int(code_match.group(1)) if code_match else None
+    if "getaddrinfo" in m or "Name or service not known" in m:
+        return (
+            "This computer couldn't look up the website's address, so nothing was downloaded. "
+            "Check the internet connection, VPN or firewall. If the app was started by a tool or "
+            "sandbox, close it and start it yourself with start.bat."
+        )
     if "Could not reach" in m or "ConnectError" in m or "ConnectTimeout" in m:
         return "Couldn't connect to the website. Check the internet connection and try again."
     if "robots.txt" in m:
