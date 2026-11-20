@@ -22,3 +22,18 @@ tx_tdlr_licenses:
   journeyman electrician: null
   master electrician: null
   apprentice electrician: null
+
+osm_overpass:
+  # OpenStreetMap tag (key=value) → trade
+  craft=plumber: plumbing
+  craft=electrician: electrical
+  craft=hvac: hvac
+  craft=carpenter: carpentry
+  craft=joiner: carpentry
+  craft=handyman: handyman
+  craft=floorer: flooring_carpet
+  craft=tiler: flooring_carpet
+  shop=carpet: flooring_carpet
+  shop=flooring: flooring_carpet
+  craft=painter: painting
+  craft=roofer: roofing

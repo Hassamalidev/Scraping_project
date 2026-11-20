@@ -6,6 +6,9 @@ every phone number and email, whether you're allowed to contact it.
 
 It is Phase 1 of a home-services lead marketplace (see [project_spec.md](project_spec.md)).
 
+> **Homeowners are never scraped.** Homeowner leads come only from people who ask for a pro
+> themselves, through a request form with recorded consent (Phase 2 in the spec).
+
 - **Business data only.** Licensed businesses and their published business contacts. Never homeowners.
 - **Official sources first.** State licence bulk files and open-data APIs, not scraping.
 - **Polite.** robots.txt honoured, ≤ 1 request/second per domain, retries with backoff, everything cached.
@@ -19,7 +22,7 @@ It is Phase 1 of a home-services lead marketplace (see [project_spec.md](project
 |---|---|
 | Web app (`prodata web`) | Browse and filter pros, see why each number is or isn't callable, log outreach, manage suppression, import DNC files, run sources, download CSVs |
 | CLI (`prodata …`) | The same pipeline from the terminal, for scheduling |
-| Connectors | **TX TSBPE** (plumbing — Responsible Master Plumbers) and **TX TDLR** (HVAC and electrical contractors, via data.texas.gov) |
+| Connectors | **TX TSBPE** (plumbing — Responsible Master Plumbers), **TX TDLR** (HVAC and electrical contractors, via data.texas.gov) and **OpenStreetMap** (carpenters, handymen, flooring, painters, roofers and more — trades Texas doesn't license) |
 | Database | PostgreSQL 16 + PostGIS (Docker), SQLAlchemy 2, Alembic migrations |
 
 ## Quick start

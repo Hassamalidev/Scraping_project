@@ -12,7 +12,7 @@ market:
   counties: [Dallas, Tarrant, Collin, Denton, Ellis, Johnson, Kaufman, Rockwall, Parker]
   zip_prefixes: ["750", "751", "752", "753", "760", "761", "762"]
 
-trades: [plumbing, flooring_carpet, handyman, hvac, electrical]
+trades: [plumbing, flooring_carpet, handyman, carpentry, hvac, electrical, painting, roofing]
 
 crawl:
   # The contact email is filled from CONTACT_EMAIL in .env.

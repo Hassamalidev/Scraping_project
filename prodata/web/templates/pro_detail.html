@@ -148,6 +148,7 @@
         <span class="muted small">fetched {{ r.fetched_at|dt }} · record {{ r.external_id }}</span>
       </summary>
       <p class="small"><a href="{{ r.url }}" rel="noopener" target="_blank" class="mono">{{ r.url[:120] }}{{ '…' if r.url|length > 120 }}</a></p>
+      {% if r.source_id == 'osm_overpass' %}<p class="small muted">Data © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a>, ODbL.</p>{% endif %}
       <table class="table table-kv">
         <tbody>
         {% for k, v in r.payload.items() %}

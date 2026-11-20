@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 from prodata.connectors.base import BaseConnector
+from prodata.connectors.osm_overpass import OsmOverpassConnector
 from prodata.connectors.tx_tdlr_licenses import TdlrLicensesConnector
 from prodata.connectors.tx_tsbpe_plumbing import TsbpePlumbingConnector
 
 CONNECTORS: dict[str, type[BaseConnector]] = {
-    c.source_id: c for c in (TsbpePlumbingConnector, TdlrLicensesConnector)
+    c.source_id: c for c in (TsbpePlumbingConnector, TdlrLicensesConnector, OsmOverpassConnector)
 }
 
 

@@ -4,7 +4,7 @@ import httpx
 import pytest
 import respx
 
-from prodata.http_client import FetchBlocked, HttpClient, RateLimiter
+from prodata.http_client import FetchBlocked, HttpClient, RateLimiter, SourceUnreachable
 
 ROBOTS_ALLOW = "User-agent: *\nDisallow: /private/\n"
 
@@ -65,6 +65,22 @@ def test_robots_403_means_disallow_all(make_client):
             await client.aclose()
 
     with pytest.raises(FetchBlocked):
+        run(go())
+    assert [str(c.request.url) for c in respx.calls] == ["https://example.gov/robots.txt"]
+
+
+@respx.mock
+def test_unreachable_site_reports_network_error_not_robots(make_client):
+    respx.get("https://example.gov/robots.txt").mock(side_effect=httpx.ConnectError("getaddrinfo failed"))
+    client = make_client()
+
+    async def go():
+        try:
+            await client.get("https://example.gov/page")
+        finally:
+            await client.aclose()
+
+    with pytest.raises(SourceUnreachable, match="Could not reach example.gov"):
         run(go())
     assert [str(c.request.url) for c in respx.calls] == ["https://example.gov/robots.txt"]
 

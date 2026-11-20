@@ -1,0 +1,32 @@
+{
+  "version": 0.6,
+  "generator": "Overpass API (fixture)",
+  "osm3s": {"copyright": "The data included in this document is from www.openstreetmap.org. The data is made available under ODbL."},
+  "elements": [
+    {
+      "type": "node", "id": 1001, "lat": 32.80, "lon": -96.80,
+      "tags": {"craft": "carpenter", "name": "Oak & Pine Carpentry", "phone": "+1 214-555-0161",
+               "email": "info@oakpine.example", "website": "oakpine.example",
+               "addr:housenumber": "50", "addr:street": "Elm Street", "addr:city": "Dallas", "addr:postcode": "75226"}
+    },
+    {
+      "type": "way", "id": 2002, "center": {"lat": 32.75, "lon": -97.33},
+      "tags": {"craft": "handyman", "name": "Fix-It Fort Worth", "contact:phone": "817-555-0170"}
+    },
+    {
+      "type": "node", "id": 1003, "lat": 32.78, "lon": -96.79,
+      "tags": {"craft": "plumber", "name": "ACME Plumbing", "phone": "(214) 555-0142"}
+    },
+    {
+      "type": "node", "id": 1004, "lat": 32.70, "lon": -96.90,
+      "tags": {"disused:craft": "carpenter", "name": "Closed Woodshop"}
+    },
+    {
+      "type": "node", "id": 1005, "lat": 32.71, "lon": -96.91,
+      "tags": {"shop": "carpet"}
+    },
+    {
+      "type": "node", "id": 1006, "lat": 32.72, "lon": -96.92
+    }
+  ]
+}

@@ -39,6 +39,10 @@ class FetchBlocked(Exception):
     """The site refused us (robots.txt, 401/403). Stop and report — never work around."""
 
 
+class SourceUnreachable(Exception):
+    """Network failure (DNS, connection refused) — not a refusal by the site."""
+
+
 class RetryableStatus(Exception):
     def __init__(self, status: int, url: str):
         super().__init__(f"HTTP {status} for {url}")
@@ -172,9 +176,13 @@ class HttpClient:
                     parser.allow_all = True
                 else:
                     parser.parse(resp.text.splitlines())
-            except httpx.TransportError:
-                # Can't read robots.txt: be conservative and treat the site as off-limits.
-                parser.disallow_all = True
+            except httpx.TransportError as exc:
+                # Can't read robots.txt, so we fetch nothing from this site. Not cached,
+                # so a later run retries once the network is back.
+                raise SourceUnreachable(
+                    f"Could not reach {parts.netloc} to read robots.txt ({type(exc).__name__}: {exc}). "
+                    "Check the internet connection / DNS; nothing was fetched."
+                ) from exc
             self._robots[origin] = parser
         return parser.can_fetch(self.user_agent, url)
 

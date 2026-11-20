@@ -67,6 +67,7 @@ async def run_collect(
 ) -> dict[str, Any]:
     cls = get_connector_class(source_id)
     connector = cls(client, market, trade_map, options)
+    metro_centers = [tuple(m.center) for m in market.market.metros]
     counts: Counter[str] = Counter()
     skipped: Counter[str] = Counter()
     errors: list[dict[str, str]] = []
@@ -95,7 +96,7 @@ async def run_collect(
                         if not pro.in_market:
                             counts["out_of_market"] += 1
                             continue
-                        _, created = load_parsed(session, pro, raw_id)
+                        _, created = load_parsed(session, pro, raw_id, metro_centers)
                         counts["businesses_created" if created else "businesses_updated"] += 1
                 except ParseSkip as skip:
                     skipped[skip.reason] += 1

@@ -80,6 +80,10 @@ class ParsedPro(BaseModel):
     emails: list[str] = Field(default_factory=list)
     license: ParsedLicense | None = None
     trades: list[str] = Field(default_factory=list)
+    trade_evidence: str = "license"  # license|website|osm|manual
+    lat: float | None = None
+    lon: float | None = None
+    opening_hours: str | None = None
     in_market: bool = True
 
 

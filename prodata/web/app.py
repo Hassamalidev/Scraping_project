@@ -66,6 +66,9 @@ TRADE_LABELS = {
     "plumbing": "Plumbing",
     "flooring_carpet": "Flooring & carpet",
     "handyman": "Handyman",
+    "carpentry": "Carpentry",
+    "painting": "Painting",
+    "roofing": "Roofing",
     "hvac": "HVAC",
     "electrical": "Electrical",
 }
