@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% from "_macros.html" import run_status, status %}
+{% block title %}Sources{% endblock %}
+{% block content %}
+<header class="page-head">
+  <div>
+    <h1>Sources</h1>
+    <p class="lede">Official licence data, collected politely: robots.txt honoured, one request per second, cached.</p>
+  </div>
+</header>
+
+{% if running %}
+<div class="notice notice-info">Collecting from {{ running|join(', ') }}… <a href="/sources">Refresh</a> to see progress.</div>
+{% endif %}
+
+<section class="panel">
+  <table class="table">
+    <thead><tr><th>Source</th><th>Tier</th><th>Trades</th><th>Last run</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+    {% for sid, cls in connectors.items() %}
+      {% set src = sources.get(sid) %}
+      <tr>
+        <td>
+          <div class="strong">{{ cls.name }}</div>
+          <div class="muted small"><span class="mono">{{ sid }}</span> · <a href="{{ cls.url }}" target="_blank" rel="noopener">official source</a>{% if docs[sid] %} · <a href="/sources/{{ sid }}/doc">notes</a>{% endif %}</div>
+        </td>
+        <td>{{ cls.tier }}</td>
+        <td>{% for t in cls.trades %}{{ t|trade }}{{ ', ' if not loop.last }}{% endfor %}</td>
+        <td class="nowrap">{{ src.last_run_at|ago if src else 'never' }}</td>
+        <td>{% if sid in running %}{{ status('info', 'Running') }}{% else %}{{ run_status(src.last_status if src else None) }}{% endif %}</td>
+        <td class="right">
+          <form method="post" action="/sources/{{ sid }}/run">
+            <button class="btn btn-secondary" type="submit" {{ 'disabled' if sid in running }}>Run now</button>
+          </form>
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+<section class="panel">
+  <h2>Run history</h2>
+  {% if runs %}
+  <table class="table">
+    <thead><tr><th>Started</th><th>Source</th><th class="num">Fetched</th><th class="num">New / changed</th><th class="num">Created</th><th class="num">Updated</th><th class="num">Skipped</th><th>Status</th></tr></thead>
+    <tbody>
+    {% for r in runs %}
+      {% set c = r.counts or {} %}
+      <tr>
+        <td class="nowrap">{{ r.started_at|dt }}</td>
+        <td class="mono small">{{ r.source_id or r.stage }}</td>
+        <td class="num">{{ (c.get('fetched', 0))|num }}</td>
+        <td class="num">{{ (c.get('new_or_changed', 0))|num }}</td>
+        <td class="num">{{ (c.get('businesses_created', 0))|num }}</td>
+        <td class="num">{{ (c.get('businesses_updated', 0))|num }}</td>
+        <td class="num">{{ (c.get('skipped', 0) + c.get('out_of_market', 0))|num }}</td>
+        <td>
+          {{ run_status(r.status) }}
+          {% if r.errors %}<details class="inline-details"><summary class="small">errors</summary><pre class="small">{% for e in r.errors[:5] %}{{ e.error }}
+{% endfor %}</pre></details>{% endif %}
+          {% if c.get('unmapped_classes') %}<details class="inline-details"><summary class="small">unmapped classes</summary><pre class="small">{% for k, v in c.unmapped_classes.items() %}{{ v }} × {{ k }}
+{% endfor %}</pre></details>{% endif %}
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="empty">No runs yet. Press “Run now” on a source.</p>
+  {% endif %}
+</section>
+{% endblock %}

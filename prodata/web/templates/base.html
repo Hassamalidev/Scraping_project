@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Tradebook{% endblock %} · Tradebook</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div class="shell">
+  <aside class="sidebar">
+    <a class="brand" href="/">
+      <span class="brand-mark" aria-hidden="true">T</span>
+      <span>
+        <span class="brand-name">Tradebook</span>
+        <span class="brand-sub">{{ market.metros[0].name }} · {{ market.state }}</span>
+      </span>
+    </a>
+    <nav>
+      <a href="/" class="{{ 'active' if nav == 'overview' }}">Overview</a>
+      <a href="/pros" class="{{ 'active' if nav == 'pros' }}">Pros</a>
+      <a href="/compliance" class="{{ 'active' if nav == 'compliance' }}">Compliance</a>
+      <a href="/sources" class="{{ 'active' if nav == 'sources' }}">Sources</a>
+    </nav>
+    <p class="sidebar-foot">Business data only.<br>No automated calls or texts.</p>
+  </aside>
+  <main class="main">
+    {% block content %}{% endblock %}
+  </main>
+</div>
+</body>
+</html>

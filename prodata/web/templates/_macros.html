@@ -1,0 +1,18 @@
+{% macro status(kind, text) -%}
+<span class="status status-{{ kind }}">{{ text }}</span>
+{%- endmacro %}
+
+{% macro call_status(decision) -%}
+{% if decision is none %}<span class="muted">—</span>
+{% elif decision.ok %}{{ status('ok', 'Can call') }}
+{% else %}<span class="status status-bad" title="{{ decision.reason }}">Blocked</span>{% endif %}
+{%- endmacro %}
+
+{% macro outreach_label(s) -%}
+{% set kinds = {'not_contacted': 'idle', 'contacted': 'info', 'replied': 'info', 'interested': 'ok', 'signed_up': 'ok', 'declined': 'idle', 'do_not_contact': 'bad'} %}
+{{ status(kinds.get(s, 'idle'), s.replace('_', ' ')|capitalize) }}
+{%- endmacro %}
+
+{% macro run_status(s) -%}
+{% if s == 'ok' %}{{ status('ok', 'OK') }}{% elif s == 'failed' %}{{ status('bad', 'Failed') }}{% elif s == 'running' %}{{ status('info', 'Running') }}{% elif s %}{{ status('idle', s) }}{% else %}<span class="muted">—</span>{% endif %}
+{%- endmacro %}

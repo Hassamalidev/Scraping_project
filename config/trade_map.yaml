@@ -1,0 +1,24 @@
+# Maps each source's license classes to the internal trade taxonomy.
+# Keys are matched case-insensitively with punctuation and extra spaces ignored.
+# A class listed with `null` is recognised but intentionally not mapped
+# (e.g. individual-level licences that are not businesses).
+# Unmapped classes are logged during `prodata collect`.
+
+tx_tsbpe_plumbing:
+  responsible master plumber: plumbing
+  rmp: plumbing
+  master plumber: plumbing
+
+tx_tdlr_licenses:
+  # TDLR licence-type labels. Verify against the live values with
+  # `prodata sources probe tx_tdlr_licenses` and add any variants here.
+  a/c contractor: hvac
+  air conditioning and refrigeration contractor: hvac
+  ac contractor: hvac
+  electrical contractor: electrical
+  residential appliance installer contractor: electrical
+  # individual licences — business data only, so not imported
+  a/c technician: null
+  journeyman electrician: null
+  master electrician: null
+  apprentice electrician: null

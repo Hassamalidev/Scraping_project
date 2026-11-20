@@ -1,0 +1,29 @@
+# Launch market. Values are the spec's example (DFW, Texas) — adjust before launch.
+market:
+  id: dfw
+  state: TX
+  metros:
+    - name: Dallas-Fort Worth
+      center: [32.7767, -96.7970]   # lat, lon
+      radius_miles: 40
+  # Pre-geocoding market filter (used until M3 geocoding computes real distances).
+  # A record is "in market" if its county is listed, or — when a source has no
+  # county — its ZIP starts with one of these prefixes.
+  counties: [Dallas, Tarrant, Collin, Denton, Ellis, Johnson, Kaufman, Rockwall, Parker]
+  zip_prefixes: ["750", "751", "752", "753", "760", "761", "762"]
+
+trades: [plumbing, flooring_carpet, handyman, hvac, electrical]
+
+crawl:
+  # The contact email is filled from CONTACT_EMAIL in .env.
+  user_agent: "ProDataBot/0.1 (+mailto:{contact_email})"
+  max_rps_per_domain: 1
+  max_pages_per_site: 8
+  respect_robots_txt: true
+  cache_ttl_hours: 20
+
+compliance:
+  dnc_max_age_days: 31
+
+scoring:
+  min_export_score: 50

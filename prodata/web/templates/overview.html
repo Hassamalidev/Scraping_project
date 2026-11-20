@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% from "_macros.html" import run_status, status %}
+{% block title %}Overview{% endblock %}
+{% block content %}
+<header class="page-head">
+  <div>
+    <h1>Overview</h1>
+    <p class="lede">Licensed trade businesses in {{ market.metros[0].name }}, with what you can and can't do with each contact.</p>
+  </div>
+  <div class="actions">
+    <a class="btn" href="/pros">Browse pros</a>
+  </div>
+</header>
+
+{% if not dnc_imports %}
+<div class="notice notice-warn">
+  <strong>No Do-Not-Call data imported.</strong>
+  Every phone number stays blocked for calling until you import the National DNC Registry files for your area codes.
+  <a href="/compliance">Import on the Compliance page</a>.
+</div>
+{% elif dnc_stale %}
+<div class="notice notice-warn">
+  <strong>DNC data is out of date</strong> for area code{{ 's' if dnc_stale|length > 1 }} {{ dnc_stale|join(', ') }}
+  (older than {{ dnc_max_age }} days). Numbers there are blocked until you re-import.
+</div>
+{% endif %}
+
+<section class="figures">
+  <div class="figure"><span class="figure-n">{{ st.businesses|num }}</span><span class="figure-l">Businesses</span></div>
+  <div class="figure"><span class="figure-n">{{ st.licensed|num }}</span><span class="figure-l">With an official licence <em>{{ st.licensed_pct }}%</em></span></div>
+  <div class="figure"><span class="figure-n">{{ st.with_phone|num }}</span><span class="figure-l">With a business phone <em>{{ st.with_phone_pct }}%</em></span></div>
+  <div class="figure"><span class="figure-n">{{ st.call_ok|num }}</span><span class="figure-l">Cleared to call <em>{{ st.call_ok_pct }}%</em></span></div>
+  <div class="figure"><span class="figure-n">{{ st.email_ok|num }}</span><span class="figure-l">Cleared to email <em>{{ st.email_ok_pct }}%</em></span></div>
+</section>
+
+<div class="grid-2">
+  <section class="panel">
+    <h2>By trade</h2>
+    {% if st.by_trade %}
+    <table class="table">
+      <thead><tr><th>Trade</th><th class="num">Businesses</th><th></th></tr></thead>
+      <tbody>
+      {% for trade, n in st.by_trade|dictsort(by='value', reverse=true) %}
+        <tr>
+          <td>{{ trade|trade }}</td>
+          <td class="num">{{ n|num }}</td>
+          <td class="right"><a href="/pros?trade={{ trade }}">View</a></td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p class="empty">No businesses yet. Run a source on the <a href="/sources">Sources</a> page to collect licence data.</p>
+    {% endif %}
+  </section>
+
+  <section class="panel">
+    <h2>Outreach</h2>
+    {% if outreach %}
+    <table class="table">
+      <tbody>
+      {% for s, n in outreach|dictsort(by='value', reverse=true) %}
+        <tr><td>{{ s.replace('_', ' ')|capitalize }}</td><td class="num">{{ n|num }}</td><td class="right"><a href="/pros?outreach={{ s }}">View</a></td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p class="empty">Nobody contacted yet. Record calls and emails from a pro's page.</p>
+    {% endif %}
+    <p class="meta">{{ suppressed|num }} value{{ 's' if suppressed != 1 }} on the suppression list.</p>
+  </section>
+</div>
+
+<section class="panel">
+  <div class="panel-head">
+    <h2>Sources</h2>
+    <a href="/sources">Manage</a>
+  </div>
+  <table class="table">
+    <thead><tr><th>Source</th><th>Trades</th><th class="num">Businesses</th><th>Last run</th><th>Status</th></tr></thead>
+    <tbody>
+    {% for sid, cls in connectors.items() %}
+      {% set src = sources.get(sid) %}
+      <tr>
+        <td><div class="strong">{{ cls.name }}</div><div class="muted mono small">{{ sid }}</div></td>
+        <td>{% for t in cls.trades %}{{ t|trade }}{{ ', ' if not loop.last }}{% endfor %}</td>
+        <td class="num">{{ (st.source_coverage.get(sid, 0))|num }}</td>
+        <td>{{ src.last_run_at|ago if src else 'never' }}</td>
+        <td>{% if sid in running %}{{ status('info', 'Running') }}{% else %}{{ run_status(src.last_status if src else None) }}{% endif %}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+{% if runs %}
+<section class="panel">
+  <h2>Recent runs</h2>
+  <table class="table">
+    <thead><tr><th>Started</th><th>Stage</th><th>Source</th><th class="num">Fetched</th><th class="num">New / changed</th><th class="num">Loaded</th><th>Status</th></tr></thead>
+    <tbody>
+    {% for r in runs %}
+      {% set c = r.counts or {} %}
+      <tr>
+        <td>{{ r.started_at|dt }}</td>
+        <td>{{ r.stage }}</td>
+        <td class="mono small">{{ r.source_id or '—' }}</td>
+        <td class="num">{{ (c.get('fetched', 0))|num }}</td>
+        <td class="num">{{ (c.get('new_or_changed', 0))|num }}</td>
+        <td class="num">{{ (c.get('businesses_created', 0) + c.get('businesses_updated', 0))|num }}</td>
+        <td>{{ run_status(r.status) }}{% if r.errors %} <span class="muted small" title="{{ r.errors[0].error }}">{{ r.errors[0].error[:60] }}</span>{% endif %}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endif %}
+{% endblock %}

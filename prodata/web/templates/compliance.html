@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% from "_macros.html" import status %}
+{% block title %}Compliance{% endblock %}
+{% block content %}
+<header class="page-head">
+  <div>
+    <h1>Compliance</h1>
+    <p class="lede">Do-Not-Call data and the permanent suppression list. Both are checked again on every export.</p>
+  </div>
+</header>
+
+{% if error %}<div class="notice notice-bad">{{ error }}</div>{% endif %}
+{% if msg %}<div class="notice notice-ok">{{ msg }}</div>{% endif %}
+
+<div class="grid-2">
+  <section class="panel">
+    <h2>Add to suppression list</h2>
+    <p class="meta">Permanent. A suppressed phone, email, domain or business is never exported and never shown as contactable.</p>
+    <form method="post" action="/compliance/suppress" class="stack">
+      <label class="field">
+        <span>Value</span>
+        <input name="value" required placeholder="(214) 555-0100, name@company.com, company.com or business #">
+      </label>
+      <div class="form-row">
+        <label class="field">
+          <span>Type</span>
+          <select name="value_type">{% for t in types %}<option value="{{ t }}">{{ t.replace('_', ' ') }}</option>{% endfor %}</select>
+        </label>
+        <label class="field">
+          <span>Reason</span>
+          <select name="reason">{% for r in reasons %}<option value="{{ r }}">{{ r.replace('_', ' ') }}</option>{% endfor %}</select>
+        </label>
+      </div>
+      <label class="field"><span>Note</span><input name="note" placeholder="Optional"></label>
+      <div><button class="btn" type="submit">Suppress</button></div>
+    </form>
+  </section>
+
+  <section class="panel">
+    <h2>Import DNC Registry file</h2>
+    <p class="meta">
+      Upload the area-code files your company downloads from the National Do Not Call Registry.
+      Data older than {{ max_age }} days blocks calling for that area code until it is re-imported.
+    </p>
+    <form method="post" action="/compliance/dnc" enctype="multipart/form-data" class="stack">
+      <label class="field"><span>File</span><input type="file" name="file" required></label>
+      <div><button class="btn" type="submit">Import</button></div>
+    </form>
+    {% if imports %}
+    <table class="table">
+      <thead><tr><th>Area code</th><th class="num">Numbers</th><th>Imported</th><th>Freshness</th></tr></thead>
+      <tbody>
+      {% for i in imports %}
+        {% set age = (now - i.imported_at).days %}
+        <tr>
+          <td class="mono">{{ i.area_code }}</td>
+          <td class="num">{{ i.row_count|num }}</td>
+          <td>{{ i.imported_at|dt }}</td>
+          <td>{% if age > max_age %}{{ status('bad', 'Expired') }}{% elif age > max_age - 7 %}{{ status('warn', (max_age - age)|string + ' days left') }}{% else %}{{ status('ok', 'Current') }}{% endif %}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p class="empty">Nothing imported yet — all numbers are blocked for calling.</p>
+    {% endif %}
+  </section>
+</div>
+
+<section class="panel">
+  <h2>Suppression list <span class="muted">({{ rows|length }})</span></h2>
+  {% if rows %}
+  <table class="table">
+    <thead><tr><th>Added</th><th>Type</th><th>Value</th><th>Reason</th><th>Note</th></tr></thead>
+    <tbody>
+    {% for r in rows %}
+      <tr>
+        <td class="nowrap">{{ r.added_at|dt }}</td>
+        <td>{{ r.value_type.replace('_', ' ') }}</td>
+        <td class="mono">{% if r.value_type == 'business_id' %}<a href="/pros/{{ r.value }}">#{{ r.value }}</a>{% elif r.value_type == 'phone' %}{{ r.value|phone }}{% else %}{{ r.value }}{% endif %}</td>
+        <td>{{ r.reason.replace('_', ' ') }}</td>
+        <td class="muted">{{ r.note or '' }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="empty">The list is empty.</p>
+  {% endif %}
+</section>
+{% endblock %}

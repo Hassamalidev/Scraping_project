@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}{{ title }}{% endblock %}
+{% block content %}
+<p class="crumb"><a href="/sources">← Sources</a></p>
+<header class="page-head"><div><h1>{{ title }}</h1></div></header>
+<section class="panel">
+  <pre class="doc">{{ text }}</pre>
+</section>
+{% endblock %}
